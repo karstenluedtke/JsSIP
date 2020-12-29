@@ -6,6 +6,7 @@ import {AnswerOptions, AnyListener, Originator, RTCSession, RTCSessionEventMap, 
 import {IncomingRequest, IncomingResponse, OutgoingRequest} from './SIPMessage'
 import {Message, SendMessageOptions} from './Message'
 import {Registrator} from './Registrator'
+import {Subscription} from './Subscription'
 import {URI} from './URI'
 import {causes} from './Constants'
 
@@ -163,6 +164,8 @@ export class UA extends EventEmitter {
   registrator(): Registrator;
 
   call(target: string, options?: CallOptions): RTCSession;
+
+  subscribe(target: string, event: string, options?: SendMessageOptions): Subscription;
 
   sendMessage(target: string | URI, body: string, options?: SendMessageOptions): Message;
 
