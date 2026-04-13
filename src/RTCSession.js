@@ -2385,7 +2385,9 @@ module.exports = class RTCSession extends EventEmitter {
 
 			// Terminate the current session when the new one is confirmed.
 			session.on('confirmed', () => {
-				this.terminate();
+				if (this._status !== C.STATUS_TERMINATED) {
+					this.terminate();
+				}
 			});
 
 			session.init_incoming(request, initCallback);
