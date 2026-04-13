@@ -3253,6 +3253,17 @@ module.exports = (function(){
                           matchFailed("\"/\"");
                         }
                       }
+                      if (result0 === null) {
+                        if (input.charCodeAt(pos) === 35) {
+                          result0 = "#";
+                          pos++;
+                        } else {
+                          result0 = null;
+                          if (reportFailures === 0) {
+                            matchFailed("\"#\"");
+                          }
+                        }
+                      }
                     }
                   }
                 }

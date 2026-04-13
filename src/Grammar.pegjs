@@ -163,7 +163,8 @@ userinfo        = user (":" password)? "@" {
 
 user            = ( unreserved / escaped / user_unreserved )+
 
-user_unreserved = "&" / "=" / "+" / "$" / "," / ";" / "?" / "/"
+user_unreserved = "&" / "=" / "+" / "$" / "," / ";" / "?" / "/" / '#'
+// '#' added for C5 feature codes, appearing in To: <sip:##298*283@s1.e1.sp1.fmcc>
 
 password        = ( unreserved / escaped / "&" / "=" / "+" / "$" / "," )* {
                     data.password = input.substring(pos, offset); }
