@@ -118,6 +118,21 @@ SIP_URI_noparams  = uri_scheme ":"  userinfo ? hostport {
                         data = -1;
                       }}
 
+SIP_URI_with_headers = uri_scheme ":"  userinfo ? hostport uri_parameters headers {
+                    var header;
+                    try {
+                        data.uri = new URI(data.scheme, data.user, data.host, data.port, data.uri_params, data.uri_headers);
+                        delete data.scheme;
+                        delete data.user;
+                        delete data.host;
+                        delete data.host_type;
+                        delete data.port;
+                        delete data.uri_params;
+                        delete data.uri_headers;
+                      } catch(e) {
+                        data = -1;
+                      }}
+
 SIP_URI         = uri_scheme ":"  userinfo ? hostport uri_parameters headers ? {
                     var header;
                     try {
@@ -128,6 +143,7 @@ SIP_URI         = uri_scheme ":"  userinfo ? hostport uri_parameters headers ? {
                         delete data.host_type;
                         delete data.port;
                         delete data.uri_params;
+                        delete data.uri_headers;
 
                         if (startRule === 'SIP_URI') { data = data.uri;}
                       } catch(e) {
@@ -430,7 +446,7 @@ contact_param       = (addr_spec / name_addr) (SEMI contact_params)* {
 
 name_addr           = ( display_name )? LAQUOT SIP_URI RAQUOT
 
-addr_spec           = SIP_URI_noparams
+addr_spec           = ( SIP_URI_with_headers / SIP_URI_noparams )
 
 display_name        = display_name: (token ( LWS token )* / quoted_string_clean) {
                         if (typeof display_name === 'string') { // quoted_string_clean

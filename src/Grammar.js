@@ -80,6 +80,7 @@ module.exports = (function(){
         "qdtext": parse_qdtext,
         "quoted_pair": parse_quoted_pair,
         "SIP_URI_noparams": parse_SIP_URI_noparams,
+        "SIP_URI_with_headers": parse_SIP_URI_with_headers,
         "SIP_URI": parse_SIP_URI,
         "uri_scheme": parse_uri_scheme,
         "uri_scheme_sips": parse_uri_scheme_sips,
@@ -157,6 +158,7 @@ module.exports = (function(){
         "Contact": parse_Contact,
         "contact_param": parse_contact_param,
         "name_addr": parse_name_addr,
+        "addr_spec": parse_addr_spec,
         "display_name": parse_display_name,
         "contact_params": parse_contact_params,
         "c_p_q": parse_c_p_q,
@@ -2883,6 +2885,78 @@ module.exports = (function(){
         }
         return result0;
       }
+      function parse_SIP_URI_with_headers() {
+        var result0, result1, result2, result3, result4, result5;
+        var pos0, pos1;
+        pos0 = pos;
+        pos1 = pos;
+        result0 = parse_uri_scheme();
+        if (result0 !== null) {
+          if (input.charCodeAt(pos) === 58) {
+            result1 = ":";
+            pos++;
+          } else {
+            result1 = null;
+            if (reportFailures === 0) {
+              matchFailed("\":\"");
+            }
+          }
+          if (result1 !== null) {
+            result2 = parse_userinfo();
+            result2 = result2 !== null ? result2 : "";
+            if (result2 !== null) {
+              result3 = parse_hostport();
+              if (result3 !== null) {
+                result4 = parse_uri_parameters();
+                if (result4 !== null) {
+                  result5 = parse_headers();
+                  if (result5 !== null) {
+                    result0 = [result0, result1, result2, result3, result4, result5];
+                  } else {
+                    result0 = null;
+                    pos = pos1;
+                  }
+                } else {
+                  result0 = null;
+                  pos = pos1;
+                }
+              } else {
+                result0 = null;
+                pos = pos1;
+              }
+            } else {
+              result0 = null;
+              pos = pos1;
+            }
+          } else {
+            result0 = null;
+            pos = pos1;
+          }
+        } else {
+          result0 = null;
+          pos = pos1;
+        }
+        if (result0 !== null) {
+          result0 = (function(offset) {
+                            var header;
+                            try {
+                                data.uri = new URI(data.scheme, data.user, data.host, data.port, data.uri_params, data.uri_headers);
+                                delete data.scheme;
+                                delete data.user;
+                                delete data.host;
+                                delete data.host_type;
+                                delete data.port;
+                                delete data.uri_params;
+                                delete data.uri_headers;
+                              } catch(e) {
+                                data = -1;
+                              }})(pos0);
+        }
+        if (result0 === null) {
+          pos = pos0;
+        }
+        return result0;
+      }
       function parse_SIP_URI() {
         var result0, result1, result2, result3, result4, result5;
         var pos0, pos1;
@@ -2946,6 +3020,7 @@ module.exports = (function(){
                                 delete data.host_type;
                                 delete data.port;
                                 delete data.uri_params;
+                                delete data.uri_headers;
                                 if (startRule === 'SIP_URI') { data = data.uri;}
                               } catch(e) {
                                 data = -1;
@@ -7903,7 +7978,7 @@ module.exports = (function(){
         var pos0, pos1, pos2;
         pos0 = pos;
         pos1 = pos;
-        result0 = parse_SIP_URI_noparams();
+        result0 = parse_addr_spec();
         if (result0 === null) {
           result0 = parse_name_addr();
         }
@@ -8001,6 +8076,14 @@ module.exports = (function(){
         } else {
           result0 = null;
           pos = pos0;
+        }
+        return result0;
+      }
+      function parse_addr_spec() {
+        var result0;
+        result0 = parse_SIP_URI_with_headers();
+        if (result0 === null) {
+          result0 = parse_SIP_URI_noparams();
         }
         return result0;
       }
@@ -8992,7 +9075,7 @@ module.exports = (function(){
         var pos0, pos1, pos2;
         pos0 = pos;
         pos1 = pos;
-        result0 = parse_SIP_URI_noparams();
+        result0 = parse_addr_spec();
         if (result0 === null) {
           result0 = parse_name_addr();
         }
@@ -10765,7 +10848,7 @@ module.exports = (function(){
         var pos0, pos1, pos2;
         pos0 = pos;
         pos1 = pos;
-        result0 = parse_SIP_URI_noparams();
+        result0 = parse_addr_spec();
         if (result0 === null) {
           result0 = parse_name_addr();
         }
@@ -11883,7 +11966,7 @@ module.exports = (function(){
         var pos0, pos1, pos2;
         pos0 = pos;
         pos1 = pos;
-        result0 = parse_SIP_URI_noparams();
+        result0 = parse_addr_spec();
         if (result0 === null) {
           result0 = parse_name_addr();
         }
