@@ -247,6 +247,8 @@ module.exports = class Registrator {
 						if (!this._registered) {
 							this._registered = true;
 							this._ua.registered({ response });
+						} else {
+							this._ua.registrationRefreshed({ response });
 						}
 
 						break;

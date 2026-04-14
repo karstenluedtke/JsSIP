@@ -14,6 +14,7 @@ import {
 	OutgoingRequest,
 } from './SIPMessage';
 import { Message, SendMessageOptions } from './Message';
+import { Transport } from './Transport';
 import { Registrator } from './Registrator';
 import { Notifier } from './Notifier';
 import { Subscriber } from './Subscriber';
@@ -162,6 +163,7 @@ export interface UAEventMap {
 	unregistered: UnRegisteredListener;
 	registrationFailed: RegistrationFailedListener;
 	registrationExpiring: RegistrationExpiringListener;
+	registrationRefreshed: RegisteredListener;
 	newRTCSession: RTCSessionListener;
 	newMessage: MessageListener;
 	sipEvent: SipEventListener;
@@ -237,6 +239,8 @@ export class UA extends EventEmitter {
 	get status(): UAStatus;
 
 	get contact(): UAContact;
+
+	get transport(): Transport;
 
 	start(): void;
 

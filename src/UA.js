@@ -585,6 +585,14 @@ module.exports = class UA extends EventEmitter {
 	}
 
 	/**
+	 * Registration Refreshed
+	 */
+	registrationRefreshed(data)
+	{
+		this.emit('registrationRefreshed', data);
+	}
+
+	/**
 	 * Unregistered
 	 */
 	unregistered(data) {
