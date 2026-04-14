@@ -694,7 +694,13 @@ module.exports = class RTCSession extends EventEmitter {
 					.catch(error => {
 						logger.warn('answer: setRemoteDescription error:%o, offending %s: %s', error, offer.type, offer.sdp);
 
-						request.reply(488);
+						let extraHeaders = [];
+						let diagnostics = this._pcDiagString(error);
+						if (diagnostics) {
+							extraHeaders.push(`Warning: 399 webrtc.local "${diagnostics}"`);
+						}
+
+						request.reply(488, null, extraHeaders);
 
 						this._failed('system', null, JsSIP_C.causes.WEBRTC_ERROR);
 
@@ -2219,7 +2225,13 @@ module.exports = class RTCSession extends EventEmitter {
 
 				return this._connection.setRemoteDescription(offer).catch(error => {
 					logger.warn('processInDialogSdpOffer: setRemoteDescription error:%o, offending %s: %s', error, offer.type, offer.sdp);
-					request.reply(488);
+					let extraHeaders = [];
+					let diagnostics = this._pcDiagString(error);
+					if (diagnostics) {
+						extraHeaders.push(`Warning: 399 webrtc.local "${diagnostics}"`);
+					}
+
+					request.reply(488, null, extraHeaders);
 					logger.warn(
 						'emit "peerconnection:setremotedescriptionfailed" [error:%o]',
 						error
@@ -2726,7 +2738,7 @@ module.exports = class RTCSession extends EventEmitter {
 								.createOffer(this._rtcOfferConstraints)
 								.then(offer => this._connection.setLocalDescription(offer))
 								.catch(error => {
-									this._acceptAndTerminate(response, 500, error.toString());
+									this._acceptAndTerminate(response, 500, 'Not Acceptable Here', error);
 									this._failed('local', response, JsSIP_C.causes.WEBRTC_ERROR);
 								});
 						}
@@ -2744,7 +2756,7 @@ module.exports = class RTCSession extends EventEmitter {
 							})
 							.catch(error => {
 								logger.warn('receiveInviteResponse: setRemoteDescription error:%o, offending %s: %s', error, answer.type, answer.sdp);
-								this._acceptAndTerminate(response, 488, 'Not Acceptable Here');
+								this._acceptAndTerminate(response, 488, 'Not Acceptable Here', error);
 								this._failed(
 									'remote',
 									response,
@@ -3053,16 +3065,26 @@ module.exports = class RTCSession extends EventEmitter {
 		}
 	}
 
-	_acceptAndTerminate(response, status_code, reason_phrase) {
+	_acceptAndTerminate(response, status_code, reason_phrase, local_error) {
 		logger.debug('acceptAndTerminate()');
 
 		const extraHeaders = [];
 
 		if (status_code) {
 			reason_phrase = reason_phrase || JsSIP_C.REASON_PHRASE[status_code] || '';
-			extraHeaders.push(
-				`Reason: SIP ;cause=${status_code}; text="${reason_phrase}"`
-			);
+			let diagnostics = "";
+			if (local_error) {
+				diagnostics = this._pcDiagString(local_error);
+			}
+			if (diagnostics) {
+				extraHeaders.push(
+					`Reason: SIP ;cause=${status_code}; text="${reason_phrase}"; x-diagnostics="${diagnostics}"`
+				);
+			} else {
+				extraHeaders.push(
+					`Reason: SIP ;cause=${status_code}; text="${reason_phrase}"`
+				);
+			}
 		}
 
 		// An error on dialog creation will fire 'failed' event.
@@ -3423,5 +3445,19 @@ module.exports = class RTCSession extends EventEmitter {
 			audio,
 			video,
 		});
+	}
+
+	_pcDiagString(error)
+	{
+		let diagnostics = error.toString();
+		if (diagnostics && (typeof diagnostics === 'string')) {
+			diagnostics = diagnostics.replace(/"/g, "'");
+			const re1 = /Failed to set .* sdp:...........*$/;
+			let matches = re1.exec(diagnostics);
+			if (matches && (matches.length > 0) && matches[0]) {
+				diagnostics = matches[0];
+			}
+		}
+		return diagnostics;
 	}
 };
