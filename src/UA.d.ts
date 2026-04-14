@@ -129,6 +129,14 @@ export interface OutgoingOptionsEvent {
 	request: OutgoingRequest;
 }
 
+export interface SessionNeededEvent {
+	originator: Originator.REMOTE;
+	call_id: string;
+	from_tag: string;
+	to_tag: string;
+	session: RTCSession | null;
+}
+
 export type ConnectingListener = (event: ConnectingEvent) => void;
 export type ConnectedListener = (event: ConnectedEvent) => void;
 export type DisconnectedListener = (event: DisconnectEvent) => void;
@@ -156,6 +164,7 @@ export type SipEventListener = <T = any>(event: {
 	event: T;
 	request: IncomingRequest;
 }) => void;
+export type SessionNeededListener = (event: SessionNeededEvent) => void;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type SipSubscribeListener = <T = any>(event: {
 	event: T;
@@ -176,6 +185,7 @@ export interface UAEventMap {
 	sipEvent: SipEventListener;
 	newSubscribe: SipSubscribeListener;
 	newOptions: OptionsListener;
+	sessionNeeded: SessionNeededListener;
 }
 
 export interface UAContactOptions {

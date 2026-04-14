@@ -717,6 +717,13 @@ module.exports = class UA extends EventEmitter {
 							);
 							if (dialog) {
 								session = dialog.owner;
+							} else {
+								let e = { ...replaces, originator: 'remote', session: null };
+								logger.debug('emit sessionNeeded');
+								this.emit('sessionNeeded', e);
+								session = e.session;
+							}
+							if (session) {
 								if (!session.isEnded()) {
 									session.receiveRequest(request);
 								} else {
