@@ -234,6 +234,8 @@ export interface RTCSessionEventMap {
 	sdp: SDPListener;
 	icecandidate: IceCandidateListener;
 	getusermediafailed: GenericErrorListener;
+	'peerconnection:offercreated': SDPListener;
+	'peerconnection:answercreated': SDPListener;
 	'peerconnection:createofferfailed': GenericErrorListener;
 	'peerconnection:createanswerfailed': GenericErrorListener;
 	'peerconnection:setlocaldescriptionfailed': GenericErrorListener;

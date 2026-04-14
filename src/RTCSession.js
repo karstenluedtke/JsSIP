@@ -1825,6 +1825,16 @@ module.exports = class RTCSession extends EventEmitter {
 				})
 				// Set local description.
 				.then(desc => {
+					const ename = "peerconnection:" + String(desc.type) + "created";
+					const e = {
+						originator: 'local',
+						type: desc.type,
+						sdp: desc.sdp,
+						desc: desc
+					};
+					logger.debug('emit "'+ename+'"');
+					this.emit(ename, e);
+
 					return connection.setLocalDescription(desc).catch(error => {
 						this._rtcReady = true;
 
@@ -2743,9 +2753,20 @@ module.exports = class RTCSession extends EventEmitter {
 						// Be ready for 200 with SDP after a 180/183 with SDP.
 						// We created a SDP 'answer' for it, so check the current signaling state.
 						if (this._connection.signalingState === 'stable') {
+							logger.debug("creating new offer in stable state");
 							return this._connection
 								.createOffer(this._rtcOfferConstraints)
-								.then(offer => this._connection.setLocalDescription(offer))
+								.then(offer => {
+									const e_offer = {
+										originator: 'local',
+										type: 'offer',
+										sdp: offer.sdp,
+										desc: offer
+									};
+									logger.debug('emit "peerconnection:offercreated"');
+									this.emit('peerconnection:offercreated', e_offer);
+									return this._connection.setLocalDescription(offer);
+								})
 								.catch(error => {
 									this._acceptAndTerminate(response, 500, 'Not Acceptable Here', error);
 									this._failed('local', response, JsSIP_C.causes.WEBRTC_ERROR);
