@@ -421,10 +421,12 @@ module.exports = class Registrator {
 		}
 	}
 
-	_unregistered(response, cause) {
+	_unregistered(response, cause, data) {
 		this._registering = false;
 		this._registered = false;
+		const lowerlayerdata = data || { };
 		this._ua.unregistered({
+			...lowerlayerdata,
 			response: response || null,
 			cause: cause || null,
 		});
