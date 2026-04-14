@@ -17,6 +17,7 @@ import { Message, SendMessageOptions } from './Message';
 import { Registrator } from './Registrator';
 import { Notifier } from './Notifier';
 import { Subscriber } from './Subscriber';
+import { Subscription, SubscribeOptions } from './Subscription'
 import { URI } from './URI';
 import { causes } from './Constants';
 
@@ -254,6 +255,12 @@ export class UA extends EventEmitter {
 		body: string,
 		options?: SendMessageOptions
 	): Message;
+
+	subscribeC5(
+		target: string,
+		event: string,
+		options?: SubscribeOptions
+	): Subscription;
 
 	subscribe(
 		target: string,

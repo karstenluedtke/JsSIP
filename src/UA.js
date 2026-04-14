@@ -4,6 +4,7 @@ const EventEmitter = require('events').EventEmitter;
 const Logger = require('./Logger');
 const JsSIP_C = require('./Constants');
 const Registrator = require('./Registrator');
+const Subscription = require('./Subscription');
 const RTCSession = require('./RTCSession');
 const Subscriber = require('./Subscriber');
 const Notifier = require('./Notifier');
@@ -76,6 +77,7 @@ module.exports = class UA extends EventEmitter {
 		this._applicants = {};
 
 		this._sessions = {};
+		this._subscriptions = {};
 		this._transport = null;
 		this._contact = null;
 		this._status = C.STATUS_INIT;
@@ -224,6 +226,27 @@ module.exports = class UA extends EventEmitter {
 	}
 
 	/**
+	 * Subscribe to some event (C5 version).
+	 *
+	 * -param {String} target
+	 * -param {String} event
+	 * -param {Object} [options]
+	 *
+	 * -throws {TypeError}
+	 *
+	 */
+	subscribeC5(target, event, options)
+	{
+		logger.debug('subscribe()');
+
+		const subs = new Subscription(this, target, event, this._transport);
+
+		subs.subscribe(options);
+
+		return subs;
+	}
+
+	/**
 	 * Send a message.
 	 *
 	 * -param {String} target
@@ -292,6 +315,14 @@ module.exports = class UA extends EventEmitter {
 				this._sessions[idx].terminate(options);
 			}
 		}
+
+		for (const idx in this._subscriptions)
+		{
+			if (!this._subscriptions[idx].isEnded())
+			{
+				this._subscriptions[idx].terminate(options);
+			}
+		}
 	}
 
 	/**
@@ -322,6 +353,16 @@ module.exports = class UA extends EventEmitter {
 				logger.debug(`closing session ${session}`);
 				try {
 					this._sessions[session].terminate();
+				} catch (error) {}
+			}
+		}
+
+		// Run	_terminate_ on every Subscription.
+		for (const subsidx in this._subscriptions) {
+			if (Object.prototype.hasOwnProperty.call(this._subscriptions, subsidx)) {
+				logger.debug(`terminating subscription ${subsidx}`);
+				try {
+					this._subscriptions[subsidx].terminate();
 				} catch (error) {}
 			}
 		}
@@ -518,6 +559,22 @@ module.exports = class UA extends EventEmitter {
 	 */
 	destroyRTCSession(session) {
 		delete this._sessions[session.id];
+	}
+
+	/**
+	 * new Subscription
+	 */
+	newSubscription(subscription)
+	{
+		this._subscriptions[subscription.id] = subscription;
+	}
+
+	/**
+	 * Subscription destroyed.
+	 */
+	destroySubscription(subscription)
+	{
+		delete this._subscriptions[subscription.id];
 	}
 
 	/**
@@ -724,7 +781,7 @@ module.exports = class UA extends EventEmitter {
 			if (dialog) {
 				dialog.receiveRequest(request);
 			} else if (method === JsSIP_C.NOTIFY) {
-				session = this._findSession(request);
+				session = this._findSubscription(request) || this._findSession(request);
 				if (session) {
 					session.receiveRequest(request);
 				} else {
@@ -762,6 +819,30 @@ module.exports = class UA extends EventEmitter {
 		} else if (sessionB) {
 			return sessionB;
 		} else {
+			return null;
+		}
+	}
+
+	/**
+	 * Get the subscription to which the request belongs to, if any.
+	 */
+	_findSubscription({ call_id, from_tag, to_tag })
+	{
+		const subscriptionIDa = call_id + from_tag;
+		const subscriptionA = this._subscriptions[subscriptionIDa];
+		const subscriptionIDb = call_id + to_tag;
+		const subscriptionB = this._subscriptions[subscriptionIDb];
+
+		if (subscriptionA)
+		{
+			return subscriptionA;
+		}
+		else if (subscriptionB)
+		{
+			return subscriptionB;
+		}
+		else
+		{
 			return null;
 		}
 	}
