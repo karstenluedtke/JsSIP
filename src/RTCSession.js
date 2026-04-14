@@ -1489,7 +1489,13 @@ module.exports = class RTCSession extends EventEmitter {
 						} else {
 							this._receiveReinvite(request);
 						}
+					} else if (request.hasHeader('replaces') &&
+					           (this._status === C.INVITE_SENT ||
+					            this._status === C.STATUS_1XX_RECEIVED)) {
+						logger.debug('receiveRequest: received INVITE/replaces in state %d', this._status);
+						this._receiveReplaces(request);
 					} else {
+						logger.warn('receiveRequest: received INVITE in state %d', this._status);
 						request.reply(403, 'Wrong Status');
 					}
 					break;
@@ -2418,9 +2424,12 @@ module.exports = class RTCSession extends EventEmitter {
 
 		function accept(initCallback) {
 			if (
+				this._status !== C.INVITE_SENT &&
+				this._status !== C.STATUS_1XX_RECEIVED &&
 				this._status !== C.STATUS_WAITING_FOR_ACK &&
 				this._status !== C.STATUS_CONFIRMED
 			) {
+				logger.warn("receiveReplaces.accept() in state %d", this._status);
 				return false;
 			}
 
