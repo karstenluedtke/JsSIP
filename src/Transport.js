@@ -37,6 +37,7 @@ module.exports = class Transport {
 		logger.debug('new()');
 
 		this.status = C.STATUS_DISCONNECTED;
+		this.lastSocketError = null;
 
 		// Current socket.
 		this.socket = null;
@@ -106,6 +107,10 @@ module.exports = class Transport {
 		return this.socket.sip_uri;
 	}
 
+	get socket_error() {
+		return this.lastSocketError;
+	}
+
 	connect() {
 		logger.debug('connect()');
 
@@ -121,6 +126,7 @@ module.exports = class Transport {
 
 		this.close_requested = false;
 		this.status = C.STATUS_CONNECTING;
+		this.lastSocketError = null;
 		this.onconnecting({ socket: this.socket, attempts: this.recover_attempts });
 
 		if (!this.close_requested) {
@@ -271,6 +277,9 @@ module.exports = class Transport {
 
 	_onDisconnect(error, code, reason) {
 		this.status = C.STATUS_DISCONNECTED;
+		if (error) {
+			this.lastSocketError = { error, code, reason };
+		}
 		this.ondisconnect({
 			socket: this.socket,
 			error,

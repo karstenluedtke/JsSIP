@@ -95,9 +95,16 @@ export interface RegisteredEvent {
 	response: IncomingResponse;
 }
 
+export interface SocketError {
+	error?: boolean;
+	code: number;
+	reason?: string;
+}
+
 export interface UnRegisteredEvent {
 	response: IncomingResponse;
 	cause?: causes;
+	socketerror?: SocketError;
 }
 
 export interface IncomingMessageEvent {

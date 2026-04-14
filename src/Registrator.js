@@ -134,7 +134,13 @@ module.exports = class Registrator {
 				this._registrationFailure(null, JsSIP_C.causes.REQUEST_TIMEOUT);
 			},
 			onTransportError: () => {
-				this._registrationFailure(null, JsSIP_C.causes.CONNECTION_ERROR);
+				let data = null;
+				const transport = this._transport || this._ua?.transport;
+				const socketerr = transport?.socket_error;
+				if (socketerr) {
+					data = { socketerror: socketerr };
+				}
+				this._registrationFailure(null, JsSIP_C.causes.CONNECTION_ERROR, data);
 			},
 			// Increase the CSeq on authentication.
 			onAuthenticated: () => {
@@ -341,7 +347,13 @@ module.exports = class Registrator {
 				this._unregistered(null, JsSIP_C.causes.REQUEST_TIMEOUT);
 			},
 			onTransportError: () => {
-				this._unregistered(null, JsSIP_C.causes.CONNECTION_ERROR);
+				let data = null;
+				const transport = this._transport || this._ua?.transport;
+				const sockerr = transport?.socket_error;
+				if (socketerr) {
+					data = { socketerror: socketerr };
+				}
+				this._unregistered(null, JsSIP_C.causes.CONNECTION_ERROR, data);
 			},
 			// Increase the CSeq on authentication.
 			onAuthenticated: () => {
@@ -388,9 +400,13 @@ module.exports = class Registrator {
 		}
 	}
 
-	_registrationFailure(response, cause) {
+	_registrationFailure(response, cause, data) {
 		this._registering = false;
+		logger.debug("registrationFailure: " + String(cause) +
+		             ", data: " + (data? JSON.stringify(data): "none"));
+		const lowerlayerdata = data || { };
 		this._ua.registrationFailed({
+			...lowerlayerdata,
 			response: response || null,
 			cause,
 		});
@@ -398,6 +414,7 @@ module.exports = class Registrator {
 		if (this._registered) {
 			this._registered = false;
 			this._ua.unregistered({
+				...lowerlayerdata,
 				response: response || null,
 				cause,
 			});
