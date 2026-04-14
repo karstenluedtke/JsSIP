@@ -1478,7 +1478,9 @@ module.exports = class RTCSession extends EventEmitter {
 
 						if (contentType && contentType.match(/^application\/dtmf-relay/i)) {
 							new RTCSession_DTMF(this).init_incoming(request);
-						} else if (contentType !== undefined) {
+						} else if ((contentType !== undefined) || !request.body) {
+							// RFC 2976, 2.2, Table 1:
+							// Content-Type is not mandatory for Content-Length: 0
 							new RTCSession_Info(this).init_incoming(request);
 						} else {
 							request.reply(415);
