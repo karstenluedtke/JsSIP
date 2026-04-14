@@ -40,7 +40,7 @@ class NonInviteClientTransaction extends EventEmitter {
 
 		let via = `SIP/2.0/${transport.via_transport}`;
 
-		via += ` ${ua.configuration.via_host};branch=${this.id}`;
+		via += ` ${ua.configuration.via_host};alias;rport;branch=${this.id}`;
 
 		this.request.setHeader('via', via);
 
@@ -142,7 +142,7 @@ class InviteClientTransaction extends EventEmitter {
 
 		let via = `SIP/2.0/${transport.via_transport}`;
 
-		via += ` ${ua.configuration.via_host};branch=${this.id}`;
+		via += ` ${ua.configuration.via_host};alias;rport;branch=${this.id}`;
 
 		this.request.setHeader('via', via);
 
@@ -324,7 +324,7 @@ class AckClientTransaction extends EventEmitter {
 
 		let via = `SIP/2.0/${transport.via_transport}`;
 
-		via += ` ${ua.configuration.via_host};branch=${this.id}`;
+		via += ` ${ua.configuration.via_host};alias;rport;branch=${this.id}`;
 
 		this.request.setHeader('via', via);
 	}
