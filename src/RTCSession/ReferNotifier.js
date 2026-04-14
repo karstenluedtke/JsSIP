@@ -27,6 +27,11 @@ module.exports = class ReferNotifier {
 			return;
 		}
 
+		if (this._session.status === this._session.C.STATUS_TERMINATED) {
+			logger.debug('notify(): session already terminated');
+			return;
+		}
+
 		reason = reason || JsSIP_C.REASON_PHRASE[code] || '';
 
 		let state;
