@@ -382,6 +382,12 @@ module.exports = class RTCSession extends EventEmitter {
 		);
 	}
 
+	isWrongContentType(contentType)
+	{
+		return ((contentType !== 'application/sdp') &&
+			!(contentType && contentType.startsWith('application/sdp;')));
+	}
+
 	init_incoming(request, initCallback) {
 		logger.debug('init_incoming()');
 
@@ -391,7 +397,7 @@ module.exports = class RTCSession extends EventEmitter {
 			: undefined;
 
 		// Check body and content type.
-		if (request.body && contentType !== 'application/sdp') {
+		if (request.body && this.isWrongContentType(contentType)) {
 			request.reply(415);
 
 			return;
@@ -2042,7 +2048,7 @@ module.exports = class RTCSession extends EventEmitter {
 		}
 
 		// Request with SDP.
-		if (contentType !== 'application/sdp') {
+		if (this.isWrongContentType(contentType)) {
 			logger.debug('invalid Content-Type');
 			request.reply(415);
 
@@ -2132,7 +2138,7 @@ module.exports = class RTCSession extends EventEmitter {
 			return;
 		}
 
-		if (contentType !== 'application/sdp') {
+		if (this.isWrongContentType(contentType)) {
 			logger.debug('invalid Content-Type');
 
 			request.reply(415);
@@ -2837,7 +2843,7 @@ module.exports = class RTCSession extends EventEmitter {
 				return;
 			} else if (
 				!response.hasHeader('Content-Type') ||
-				response.getHeader('Content-Type').toLowerCase() !== 'application/sdp'
+				this.isWrongContentType(response.getHeader('Content-Type').toLowerCase())
 			) {
 				onFailed.call(this);
 
@@ -2986,7 +2992,7 @@ module.exports = class RTCSession extends EventEmitter {
 					return;
 				} else if (
 					!response.hasHeader('Content-Type') ||
-					response.getHeader('Content-Type').toLowerCase() !== 'application/sdp'
+					this.isWrongContentType(response.getHeader('Content-Type').toLowerCase())
 				) {
 					onFailed.call(this);
 
