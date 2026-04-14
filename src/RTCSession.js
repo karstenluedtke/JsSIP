@@ -692,6 +692,8 @@ module.exports = class RTCSession extends EventEmitter {
 				this._connectionPromiseQueue = this._connectionPromiseQueue
 					.then(() => this._connection.setRemoteDescription(offer))
 					.catch(error => {
+						logger.warn('answer: setRemoteDescription error:%o, offending %s: %s', error, offer.type, offer.sdp);
+
 						request.reply(488);
 
 						this._failed('system', null, JsSIP_C.causes.WEBRTC_ERROR);
@@ -1436,6 +1438,8 @@ module.exports = class RTCSession extends EventEmitter {
 								}
 							})
 							.catch(error => {
+								logger.warn('receiveRequest: setRemoteDescription error:%o, offending %s: %s', error, answer.type, answer.sdp);
+
 								this.terminate({
 									cause: JsSIP_C.causes.BAD_MEDIA_DESCRIPTION,
 									status_code: 488,
@@ -1811,6 +1815,8 @@ module.exports = class RTCSession extends EventEmitter {
 				.then(desc => {
 					return connection.setLocalDescription(desc).catch(error => {
 						this._rtcReady = true;
+
+						logger.warn('createLocalDescription: setLocalDescription error:%o, offending %s: %s', error, desc.type, desc.sdp);
 
 						logger.warn(
 							'emit "peerconnection:setlocaldescriptionfailed" [error:%o]',
@@ -2212,6 +2218,7 @@ module.exports = class RTCSession extends EventEmitter {
 				}
 
 				return this._connection.setRemoteDescription(offer).catch(error => {
+					logger.warn('processInDialogSdpOffer: setRemoteDescription error:%o, offending %s: %s', error, offer.type, offer.sdp);
 					request.reply(488);
 					logger.warn(
 						'emit "peerconnection:setremotedescriptionfailed" [error:%o]',
@@ -2671,6 +2678,7 @@ module.exports = class RTCSession extends EventEmitter {
 					.then(() => this._connection.setRemoteDescription(answer))
 					.then(() => this._progress('remote', response))
 					.catch(error => {
+						logger.warn('receiveInviteResponse: setRemoteDescription error:%o, offending %s: %s', error, answer.type, answer.sdp);
 						logger.warn(
 							'emit "peerconnection:setremotedescriptionfailed" [error:%o]',
 							error
@@ -2735,6 +2743,7 @@ module.exports = class RTCSession extends EventEmitter {
 								this._confirmed('local', null);
 							})
 							.catch(error => {
+								logger.warn('receiveInviteResponse: setRemoteDescription error:%o, offending %s: %s', error, answer.type, answer.sdp);
 								this._acceptAndTerminate(response, 488, 'Not Acceptable Here');
 								this._failed(
 									'remote',
@@ -2865,6 +2874,8 @@ module.exports = class RTCSession extends EventEmitter {
 					}
 				})
 				.catch(error => {
+					logger.warn('sendReinvite: setRemoteDescription error:%o, offending %s: %s', error, answer.type, answer.sdp);
+
 					onFailed.call(this);
 
 					logger.warn(
@@ -3017,6 +3028,8 @@ module.exports = class RTCSession extends EventEmitter {
 						}
 					})
 					.catch(error => {
+						logger.warn('sendUpdate: setRemoteDescription error:%o, offending %s: %s', error, answer.type, answer.sdp);
+
 						onFailed.call(this);
 
 						logger.warn(
