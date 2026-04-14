@@ -36,8 +36,14 @@ module.exports = class ReferSubscriber extends EventEmitter {
 
 		if (options.replaces) {
 			replaces = options.replaces._request.call_id;
-			replaces += `;to-tag=${options.replaces._to_tag}`;
-			replaces += `;from-tag=${options.replaces._from_tag}`;
+			if (options.replaces._direction === 'incoming') {
+				// for incoming calls the tags must be swapped
+				replaces += `;to-tag=${options.replaces._from_tag}`;
+				replaces += `;from-tag=${options.replaces._to_tag}`;
+			} else {
+				replaces += `;to-tag=${options.replaces._to_tag}`;
+				replaces += `;from-tag=${options.replaces._from_tag}`;
+			}
 
 			replaces = encodeURIComponent(replaces);
 		}
