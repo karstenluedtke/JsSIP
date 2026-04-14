@@ -549,6 +549,12 @@ module.exports = class RTCSession extends EventEmitter {
 			sdp.media = [sdp.media];
 		}
 
+		const remotehold = !this._late_sdp && this._isRemoteHoldSdp(sdp);
+		if (remotehold) {
+			logger.warn('answer(): remoteHold = ' + remotehold);
+			this._remoteHold = true;
+		}
+
 		// Go through all medias in SDP to find offered capabilities to answer with.
 		for (const m of sdp.media) {
 			if (m.type === 'audio') {
@@ -656,7 +662,7 @@ module.exports = class RTCSession extends EventEmitter {
 				}
 
 				this._localMediaStream = stream;
-				if (stream) {
+				if (stream && !remotehold) {
 					let trackids = [ ];
 					stream.getAudioTracks().forEach((track) => {
 						trackids.push(track.id);
@@ -726,6 +732,45 @@ module.exports = class RTCSession extends EventEmitter {
 				this._connecting(request);
 
 				if (!this._late_sdp) {
+					if (remotehold && this._localMediaStream)
+					{
+						// In this rare case, we haven't added our sender tracks yet.
+						// If we had done so prior to setRemoteDescription(),
+						// the transceivers would not match the recvonly direction, and
+						// additional transceivers had been created.
+						// Since we still might need our sender tracks after remote resume,
+						// we add them right now to the transceivers created by
+						// setRemoteDescription().
+						const transceivers = this._connection.getTransceivers();
+						let audiotracks = this._localMediaStream.getAudioTracks();
+						let videotracks = this._localMediaStream.getVideoTracks();
+						logger.debug("answer(remotehold): " + transceivers.length + " transceivers, " + audiotracks.length + " audio " + videotracks.length + " video tracks");
+						for (const xcvr of transceivers)
+						{
+							const kind = xcvr?.receiver?.track?.kind;
+							let track = null;
+							if ((kind === 'audio') && (audiotracks.length > 0))
+							{
+								track = audiotracks[0];
+								audiotracks = audiotracks.slice(1);
+							}
+							else if ((kind === 'video') && (videotracks.length > 0))
+							{
+								track = videotracks[0];
+								videotracks = videotracks.slice(1);
+							}
+							if (track) {
+								const d = kind + " track " + track.id + " " + track.label;
+								logger.debug("answer(remotehold): assigning "+d+" to sender");
+								xcvr.sender.replaceTrack(track).then(() => {
+									logger.debug("answer(remotehold): "+d+" assigned to sender");
+								}).catch((e1) => {
+									const e = String(e1);
+									logger.error("answer(remotehold): assigning "+d+" error: "+e);
+								});
+							}
+						}
+					}
 					return this._createLocalDescription(
 						'answer',
 						rtcAnswerConstraints
@@ -1420,6 +1465,12 @@ module.exports = class RTCSession extends EventEmitter {
 								status_code: 400,
 							});
 							break;
+						}
+
+						const remotehold = this._isRemoteHoldSdp(request.parseSDP());
+						if (remotehold) {
+							logger.warn('receiveRequest(ACK): remoteHold = ' + remotehold);
+							this._remoteHold = true;
 						}
 
 						const e = {
@@ -2201,29 +2252,54 @@ module.exports = class RTCSession extends EventEmitter {
 		}
 	}
 
-	_processInDialogSdpOffer(request) {
-		logger.debug('_processInDialogSdpOffer()');
-
-		const sdp = request.parseSDP();
+	_isRemoteHoldSdp(sdp) {
+		if (!sdp) {
+			logger.warn('_isRemoteHoldSdp(): no sdp: ' + String(typeof sdp));
+			return false;
+		} else if (!sdp.media) {
+			logger.warn('_isRemoteHoldSdp(): no media in sdp: '+JSON.stringify(sdp));
+			return false;
+		}
 
 		let hold = false;
+		let conn = sdp.connection;
+		const media = Array.isArray(sdp.media)? sdp.media: [ sdp.media ];
 
-		for (const m of sdp.media) {
+		for (const m of media) {
 			if (holdMediaTypes.indexOf(m.type) === -1) {
 				continue;
 			}
 
+			if (m.connection) {
+				conn = m.connection;
+			}
+
 			const direction = m.direction || sdp.direction || 'sendrecv';
+
+			logger.debug('_isRemoteHoldSdp(): ' + String(conn.ip) + ' ' + direction);
 
 			if (direction === 'sendonly' || direction === 'inactive') {
 				hold = true;
-			}
-			// If at least one of the streams is active don't emit 'hold'.
-			else {
+			} else if (conn && (conn.ip === "0.0.0.0")) {
+				hold = true;
+			} else {
+			    // If at least one of the streams is active don't emit 'hold'.
 				hold = false;
 				break;
 			}
 		}
+
+		logger.debug('_isRemoteHoldSdp(): ' + hold);
+		return hold;
+	}
+
+	_processInDialogSdpOffer(request)
+	{
+		logger.debug('_processInDialogSdpOffer()');
+
+		const sdp = request.parseSDP();
+
+		const hold = this._isRemoteHoldSdp(sdp);
 
 		const e = { originator: 'remote', type: 'offer', sdp: request.body };
 
@@ -2736,6 +2812,13 @@ module.exports = class RTCSession extends EventEmitter {
 				// An error on dialog creation will fire 'failed' event.
 				if (!this._createDialog(response, 'UAC')) {
 					break;
+				}
+
+				const remotehold = this._isRemoteHoldSdp(response.parseSDP());
+				if (remotehold)
+				{
+					logger.warn('receiveInviteResponse(2xx): remoteHold = ' + remotehold);
+					this._remoteHold = true;
 				}
 
 				const e = { originator: 'remote', type: 'answer', sdp: response.body };
