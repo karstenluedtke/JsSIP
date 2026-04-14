@@ -651,9 +651,23 @@ module.exports = class RTCSession extends EventEmitter {
 
 				this._localMediaStream = stream;
 				if (stream) {
-					stream.getTracks().forEach(track => {
+					let trackids = [ ];
+					stream.getAudioTracks().forEach((track) => {
+						trackids.push(track.id);
 						this._connection.addTrack(track, stream);
 					});
+					stream.getVideoTracks().forEach((track) => {
+						trackids.push(track.id);
+						this._connection.addTrack(track, stream);
+					});
+					if (stream.getTracks().length > trackids.length) {
+						stream.getTracks().forEach((track) => {
+							if (trackids.indexOf(track.id) < 0) {
+								trackids.push(track.id);
+								this._connection.addTrack(track, stream);
+							}
+						});
+					}
 				}
 			})
 			// Set remote description.
@@ -2476,9 +2490,23 @@ module.exports = class RTCSession extends EventEmitter {
 				this._localMediaStream = stream;
 
 				if (stream) {
-					stream.getTracks().forEach(track => {
+					let trackids = [ ];
+					stream.getAudioTracks().forEach((track) => {
+						trackids.push(track.id);
 						this._connection.addTrack(track, stream);
 					});
+					stream.getVideoTracks().forEach((track) => {
+						trackids.push(track.id);
+						this._connection.addTrack(track, stream);
+					});
+					if (stream.getTracks().length > trackids.length) {
+						stream.getTracks().forEach((track) => {
+							if (trackids.indexOf(track.id) < 0) {
+								trackids.push(track.id);
+								this._connection.addTrack(track, stream);
+							}
+						});
+					}
 				}
 
 				// TODO: should this be triggered here?
