@@ -589,7 +589,8 @@ module.exports = class RTCSession extends EventEmitter {
 		if (
 			!mediaStream &&
 			!peerHasAudioLine &&
-			!rtcOfferConstraints.offerToReceiveAudio
+			!rtcOfferConstraints.offerToReceiveAudio &&
+			!this._late_sdp
 		) {
 			mediaConstraints.audio = false;
 		}
@@ -598,7 +599,8 @@ module.exports = class RTCSession extends EventEmitter {
 		if (
 			!mediaStream &&
 			!peerHasVideoLine &&
-			!rtcOfferConstraints.offerToReceiveVideo
+			!rtcOfferConstraints.offerToReceiveVideo &&
+			!this._late_sdp
 		) {
 			mediaConstraints.video = false;
 		}
