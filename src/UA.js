@@ -6,6 +6,7 @@ const JsSIP_C = require('./Constants');
 const Registrator = require('./Registrator');
 const Subscription = require('./Subscription');
 const RTCSession = require('./RTCSession');
+const NonRTCSession = require('./NonRTCSession');
 const Subscriber = require('./Subscriber');
 const Notifier = require('./Notifier');
 const Message = require('./Message');
@@ -218,7 +219,8 @@ module.exports = class UA extends EventEmitter {
 	call(target, options) {
 		logger.debug('call()');
 
-		const session = new RTCSession(this);
+		const nonrtc = options && options["nonrtc"];
+		const session = nonrtc? new NonRTCSession(this): new RTCSession(this);
 
 		session.connect(target, options);
 
