@@ -4,7 +4,6 @@ import { UA } from './UA';
 import { Transport } from './Transport';
 import {
 	ExtraHeaders,
-	Originator,
 	OutgoingListener,
 	IncomingListener,
 	IncomingInfoListener,
