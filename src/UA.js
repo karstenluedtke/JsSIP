@@ -219,8 +219,8 @@ module.exports = class UA extends EventEmitter {
 	call(target, options) {
 		logger.debug('call()');
 
-		const nonrtc = options && options["nonrtc"];
-		const session = nonrtc? new NonRTCSession(this): new RTCSession(this);
+		const nonrtc = options && options['nonrtc'];
+		const session = nonrtc ? new NonRTCSession(this) : new RTCSession(this);
 
 		session.connect(target, options);
 
@@ -237,8 +237,7 @@ module.exports = class UA extends EventEmitter {
 	 * -throws {TypeError}
 	 *
 	 */
-	subscribeC5(target, event, options)
-	{
+	subscribeC5(target, event, options) {
 		logger.debug('subscribe()');
 
 		const subs = new Subscription(this, target, event, this._transport);
@@ -318,10 +317,8 @@ module.exports = class UA extends EventEmitter {
 			}
 		}
 
-		for (const idx in this._subscriptions)
-		{
-			if (!this._subscriptions[idx].isEnded())
-			{
+		for (const idx in this._subscriptions) {
+			if (!this._subscriptions[idx].isEnded()) {
 				this._subscriptions[idx].terminate(options);
 			}
 		}
@@ -566,16 +563,14 @@ module.exports = class UA extends EventEmitter {
 	/**
 	 * new Subscription
 	 */
-	newSubscription(subscription)
-	{
+	newSubscription(subscription) {
 		this._subscriptions[subscription.id] = subscription;
 	}
 
 	/**
 	 * Subscription destroyed.
 	 */
-	destroySubscription(subscription)
-	{
+	destroySubscription(subscription) {
 		delete this._subscriptions[subscription.id];
 	}
 
@@ -589,8 +584,7 @@ module.exports = class UA extends EventEmitter {
 	/**
 	 * Registration Refreshed
 	 */
-	registrationRefreshed(data)
-	{
+	registrationRefreshed(data) {
 		this.emit('registrationRefreshed', data);
 	}
 
@@ -718,7 +712,8 @@ module.exports = class UA extends EventEmitter {
 							if (dialog) {
 								session = dialog.owner;
 							} else {
-								let e = { ...replaces, originator: 'remote', session: null };
+								const e = { ...replaces, originator: 'remote', session: null };
+
 								logger.debug('emit sessionNeeded');
 								this.emit('sessionNeeded', e);
 								session = e.session;
@@ -843,23 +838,17 @@ module.exports = class UA extends EventEmitter {
 	/**
 	 * Get the subscription to which the request belongs to, if any.
 	 */
-	_findSubscription({ call_id, from_tag, to_tag })
-	{
+	_findSubscription({ call_id, from_tag, to_tag }) {
 		const subscriptionIDa = call_id + from_tag;
 		const subscriptionA = this._subscriptions[subscriptionIDa];
 		const subscriptionIDb = call_id + to_tag;
 		const subscriptionB = this._subscriptions[subscriptionIDb];
 
-		if (subscriptionA)
-		{
+		if (subscriptionA) {
 			return subscriptionA;
-		}
-		else if (subscriptionB)
-		{
+		} else if (subscriptionB) {
 			return subscriptionB;
-		}
-		else
-		{
+		} else {
 			return null;
 		}
 	}

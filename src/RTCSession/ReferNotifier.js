@@ -29,6 +29,7 @@ module.exports = class ReferNotifier {
 
 		if (this._session.status === this._session.C.STATUS_TERMINATED) {
 			logger.debug('notify(): session already terminated');
+
 			return;
 		}
 

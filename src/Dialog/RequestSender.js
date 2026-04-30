@@ -13,7 +13,7 @@ const EventHandlers = {
 	onDialogError: () => {},
 };
 
-const logger = new Logger("DialogRequestSender");
+const logger = new Logger('DialogRequestSender');
 
 module.exports = class DialogRequestSender {
 	constructor(dialog, request, eventHandlers) {
@@ -97,35 +97,52 @@ module.exports = class DialogRequestSender {
 			response.status_code === 491
 		) {
 			if (this._reattempt) {
-				logger.warn("receiveResponse: received 491 once again");
+				logger.warn('receiveResponse: received 491 once again');
 				this._eventHandlers.onErrorResponse(response);
 			} else {
 				const sess = this._dialog.owner;
 				// rfc3261, 14.1, UAC receives 491, case 1. or 2.
-				let tmo = (sess?.direction == 'outgoing')? 2100: 100;
+				let tmo = sess?.direction == 'outgoing' ? 2100 : 100;
+
 				tmo = Math.floor(tmo + 1900 * Math.random());
-				logger.debug("receiveResponse: received 491: " + JSON.stringify({
-										 cseq: response?.cseq,
-										 sess_direction: sess?.direction, tmo,
-										 signalingState: sess?.connection?.signalingState }));
+				logger.debug(
+					`receiveResponse: received 491: ${JSON.stringify({
+						cseq: response?.cseq,
+						sess_direction: sess?.direction,
+						tmo,
+						signalingState: sess?.connection?.signalingState,
+					})}`
+				);
 				this._reattemptTimer = setTimeout(() => {
 					if (!this._dialog.isTerminated()) {
-						if (this._request.body &&
-								(this._request.body.indexOf('\no=') > 0) &&
-								(sess?.connection?.signalingState != 'have-local-offer')) {
-							logger.warn("another sdp exchange occurred after 491: " +
-													JSON.stringify({ cseq: response?.cseq,
-													signalingState: sess?.connection?.signalingState }));
+						if (
+							this._request.body &&
+							this._request.body.indexOf('\no=') > 0 &&
+							sess?.connection?.signalingState != 'have-local-offer'
+						) {
+							logger.warn(
+								`another sdp exchange occurred after 491: ${JSON.stringify({
+									cseq: response?.cseq,
+									signalingState: sess?.connection?.signalingState,
+								})}`
+							);
+
 							return;
 						}
 						this._reattempt = true;
-						this._request.cseq = (this._dialog.local_seqnum += 1);
-						this._request.setHeader('cseq', `${this._request.cseq} ${this._request.method}`);
-						logger.debug("second attempt on 491: " + JSON.stringify({
-												 cseq: response?.cseq,
-												 request_cseq: this._request?.cseq,
-												 local_seqnum: this._dialog?.local_seqnum,
-												 signalingState: sess?.connection?.signalingState }));
+						this._request.cseq = this._dialog.local_seqnum += 1;
+						this._request.setHeader(
+							'cseq',
+							`${this._request.cseq} ${this._request.method}`
+						);
+						logger.debug(
+							`second attempt on 491: ${JSON.stringify({
+								cseq: response?.cseq,
+								request_cseq: this._request?.cseq,
+								local_seqnum: this._dialog?.local_seqnum,
+								signalingState: sess?.connection?.signalingState,
+							})}`
+						);
 						this.send();
 					}
 				}, tmo);

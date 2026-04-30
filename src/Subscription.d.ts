@@ -1,8 +1,15 @@
-import {EventEmitter} from 'events'
+import { EventEmitter } from 'events';
 
-import {UA} from './UA'
-import {Transport} from './Transport'
-import {ExtraHeaders, Originator, OutgoingListener, IncomingListener, IncomingInfoListener, EndListener} from './RTCSession'
+import { UA } from './UA';
+import { Transport } from './Transport';
+import {
+	ExtraHeaders,
+	Originator,
+	OutgoingListener,
+	IncomingListener,
+	IncomingInfoListener,
+	EndListener,
+} from './RTCSession';
 
 export interface SubscriptionEventMap {
 	accepted: OutgoingListener;
@@ -31,5 +38,8 @@ export class Subscription extends EventEmitter {
 
 	unsubscribe(): void;
 
-	on<T extends keyof SubscriptionEventMap>(type: T, listener: SubscriptionEventMap[T]): this;
+	on<T extends keyof SubscriptionEventMap>(
+		type: T,
+		listener: SubscriptionEventMap[T]
+	): this;
 }

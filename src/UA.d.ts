@@ -18,7 +18,7 @@ import { Transport } from './Transport';
 import { Registrator } from './Registrator';
 import { Notifier } from './Notifier';
 import { Subscriber } from './Subscriber';
-import { Subscription, SubscribeOptions } from './Subscription'
+import { Subscription, SubscribeOptions } from './Subscription';
 import { URI } from './URI';
 import { causes } from './Constants';
 

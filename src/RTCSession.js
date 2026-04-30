@@ -382,10 +382,11 @@ module.exports = class RTCSession extends EventEmitter {
 		);
 	}
 
-	isWrongContentType(contentType)
-	{
-		return ((contentType !== 'application/sdp') &&
-			!(contentType && contentType.startsWith('application/sdp;')));
+	isWrongContentType(contentType) {
+		return (
+			contentType !== 'application/sdp' &&
+			!(contentType && contentType.startsWith('application/sdp;'))
+		);
 	}
 
 	init_incoming(request, initCallback) {
@@ -550,8 +551,9 @@ module.exports = class RTCSession extends EventEmitter {
 		}
 
 		const remotehold = !this._late_sdp && this._isRemoteHoldSdp(sdp);
+
 		if (remotehold) {
-			logger.warn('answer(): remoteHold = ' + remotehold);
+			logger.warn(`answer(): remoteHold = ${remotehold}`);
 			this._remoteHold = true;
 		}
 
@@ -663,17 +665,18 @@ module.exports = class RTCSession extends EventEmitter {
 
 				this._localMediaStream = stream;
 				if (stream && !remotehold) {
-					let trackids = [ ];
-					stream.getAudioTracks().forEach((track) => {
+					const trackids = [];
+
+					stream.getAudioTracks().forEach(track => {
 						trackids.push(track.id);
 						this._connection.addTrack(track, stream);
 					});
-					stream.getVideoTracks().forEach((track) => {
+					stream.getVideoTracks().forEach(track => {
 						trackids.push(track.id);
 						this._connection.addTrack(track, stream);
 					});
 					if (stream.getTracks().length > trackids.length) {
-						stream.getTracks().forEach((track) => {
+						stream.getTracks().forEach(track => {
 							if (trackids.indexOf(track.id) < 0) {
 								trackids.push(track.id);
 								this._connection.addTrack(track, stream);
@@ -698,10 +701,16 @@ module.exports = class RTCSession extends EventEmitter {
 				this._connectionPromiseQueue = this._connectionPromiseQueue
 					.then(() => this._connection.setRemoteDescription(offer))
 					.catch(error => {
-						logger.warn('answer: setRemoteDescription error:%o, offending %s: %s', error, offer.type, offer.sdp);
+						logger.warn(
+							'answer: setRemoteDescription error:%o, offending %s: %s',
+							error,
+							offer.type,
+							offer.sdp
+						);
 
-						let extraHeaders = [];
-						let diagnostics = this._pcDiagString(error);
+						const extraHeaders = [];
+						const diagnostics = this._pcDiagString(error);
+
 						if (diagnostics) {
 							extraHeaders.push(`Warning: 399 webrtc.local "${diagnostics}"`);
 						}
@@ -732,8 +741,7 @@ module.exports = class RTCSession extends EventEmitter {
 				this._connecting(request);
 
 				if (!this._late_sdp) {
-					if (remotehold && this._localMediaStream)
-					{
+					if (remotehold && this._localMediaStream) {
 						// In this rare case, we haven't added our sender tracks yet.
 						// If we had done so prior to setRemoteDescription(),
 						// the transceivers would not match the recvonly direction, and
@@ -744,33 +752,43 @@ module.exports = class RTCSession extends EventEmitter {
 						const transceivers = this._connection.getTransceivers();
 						let audiotracks = this._localMediaStream.getAudioTracks();
 						let videotracks = this._localMediaStream.getVideoTracks();
-						logger.debug("answer(remotehold): " + transceivers.length + " transceivers, " + audiotracks.length + " audio " + videotracks.length + " video tracks");
-						for (const xcvr of transceivers)
-						{
+
+						logger.debug(
+							`answer(remotehold): ${transceivers.length} transceivers, ${
+								audiotracks.length
+							} audio ${videotracks.length} video tracks`
+						);
+						for (const xcvr of transceivers) {
 							const kind = xcvr?.receiver?.track?.kind;
 							let track = null;
-							if ((kind === 'audio') && (audiotracks.length > 0))
-							{
+
+							if (kind === 'audio' && audiotracks.length > 0) {
 								track = audiotracks[0];
 								audiotracks = audiotracks.slice(1);
-							}
-							else if ((kind === 'video') && (videotracks.length > 0))
-							{
+							} else if (kind === 'video' && videotracks.length > 0) {
 								track = videotracks[0];
 								videotracks = videotracks.slice(1);
 							}
 							if (track) {
-								const d = kind + " track " + track.id + " " + track.label;
-								logger.debug("answer(remotehold): assigning "+d+" to sender");
-								xcvr.sender.replaceTrack(track).then(() => {
-									logger.debug("answer(remotehold): "+d+" assigned to sender");
-								}).catch((e1) => {
-									const e = String(e1);
-									logger.error("answer(remotehold): assigning "+d+" error: "+e);
-								});
+								const d = `${kind} track ${track.id} ${track.label}`;
+
+								logger.debug(`answer(remotehold): assigning ${d} to sender`);
+								xcvr.sender
+									.replaceTrack(track)
+									.then(() => {
+										logger.debug(`answer(remotehold): ${d} assigned to sender`);
+									})
+									.catch(e1 => {
+										const e = String(e1);
+
+										logger.error(
+											`answer(remotehold): assigning ${d} error: ${e}`
+										);
+									});
 							}
 						}
 					}
+
 					return this._createLocalDescription(
 						'answer',
 						rtcAnswerConstraints
@@ -1468,8 +1486,9 @@ module.exports = class RTCSession extends EventEmitter {
 						}
 
 						const remotehold = this._isRemoteHoldSdp(request.parseSDP());
+
 						if (remotehold) {
-							logger.warn('receiveRequest(ACK): remoteHold = ' + remotehold);
+							logger.warn(`receiveRequest(ACK): remoteHold = ${remotehold}`);
 							this._remoteHold = true;
 						}
 
@@ -1495,7 +1514,12 @@ module.exports = class RTCSession extends EventEmitter {
 								}
 							})
 							.catch(error => {
-								logger.warn('receiveRequest: setRemoteDescription error:%o, offending %s: %s', error, answer.type, answer.sdp);
+								logger.warn(
+									'receiveRequest: setRemoteDescription error:%o, offending %s: %s',
+									error,
+									answer.type,
+									answer.sdp
+								);
 
 								this.terminate({
 									cause: JsSIP_C.causes.BAD_MEDIA_DESCRIPTION,
@@ -1540,13 +1564,21 @@ module.exports = class RTCSession extends EventEmitter {
 						} else {
 							this._receiveReinvite(request);
 						}
-					} else if (request.hasHeader('replaces') &&
-					           (this._status === C.INVITE_SENT ||
-					            this._status === C.STATUS_1XX_RECEIVED)) {
-						logger.debug('receiveRequest: received INVITE/replaces in state %d', this._status);
+					} else if (
+						request.hasHeader('replaces') &&
+						(this._status === C.INVITE_SENT ||
+							this._status === C.STATUS_1XX_RECEIVED)
+					) {
+						logger.debug(
+							'receiveRequest: received INVITE/replaces in state %d',
+							this._status
+						);
 						this._receiveReplaces(request);
 					} else {
-						logger.warn('receiveRequest: received INVITE in state %d', this._status);
+						logger.warn(
+							'receiveRequest: received INVITE in state %d',
+							this._status
+						);
 						request.reply(403, 'Wrong Status');
 					}
 					break;
@@ -1565,7 +1597,7 @@ module.exports = class RTCSession extends EventEmitter {
 
 						if (contentType && contentType.match(/^application\/dtmf-relay/i)) {
 							new RTCSession_DTMF(this).init_incoming(request);
-						} else if ((contentType !== undefined) || !request.body) {
+						} else if (contentType !== undefined || !request.body) {
 							// RFC 2976, 2.2, Table 1:
 							// Content-Type is not mandatory for Content-Length: 0
 							new RTCSession_Info(this).init_incoming(request);
@@ -1876,20 +1908,26 @@ module.exports = class RTCSession extends EventEmitter {
 				})
 				// Set local description.
 				.then(desc => {
-					const ename = "peerconnection:" + String(desc.type) + "created";
+					const ename = `peerconnection:${String(desc.type)}created`;
 					const e = {
 						originator: 'local',
 						type: desc.type,
 						sdp: desc.sdp,
-						desc: desc
+						desc: desc,
 					};
-					logger.debug('emit "'+ename+'"');
+
+					logger.debug(`emit "${ename}"`);
 					this.emit(ename, e);
 
 					return connection.setLocalDescription(desc).catch(error => {
 						this._rtcReady = true;
 
-						logger.warn('createLocalDescription: setLocalDescription error:%o, offending %s: %s', error, desc.type, desc.sdp);
+						logger.warn(
+							'createLocalDescription: setLocalDescription error:%o, offending %s: %s',
+							error,
+							desc.type,
+							desc.sdp
+						);
 
 						logger.warn(
 							'emit "peerconnection:setlocaldescriptionfailed" [error:%o]',
@@ -2254,16 +2292,20 @@ module.exports = class RTCSession extends EventEmitter {
 
 	_isRemoteHoldSdp(sdp) {
 		if (!sdp) {
-			logger.warn('_isRemoteHoldSdp(): no sdp: ' + String(typeof sdp));
+			logger.warn(`_isRemoteHoldSdp(): no sdp: ${String(typeof sdp)}`);
+
 			return false;
 		} else if (!sdp.media) {
-			logger.warn('_isRemoteHoldSdp(): no media in sdp: '+JSON.stringify(sdp));
+			logger.warn(
+				`_isRemoteHoldSdp(): no media in sdp: ${JSON.stringify(sdp)}`
+			);
+
 			return false;
 		}
 
 		let hold = false;
 		let conn = sdp.connection;
-		const media = Array.isArray(sdp.media)? sdp.media: [ sdp.media ];
+		const media = Array.isArray(sdp.media) ? sdp.media : [sdp.media];
 
 		for (const m of media) {
 			if (holdMediaTypes.indexOf(m.type) === -1) {
@@ -2276,25 +2318,25 @@ module.exports = class RTCSession extends EventEmitter {
 
 			const direction = m.direction || sdp.direction || 'sendrecv';
 
-			logger.debug('_isRemoteHoldSdp(): ' + String(conn.ip) + ' ' + direction);
+			logger.debug(`_isRemoteHoldSdp(): ${String(conn.ip)} ${direction}`);
 
 			if (direction === 'sendonly' || direction === 'inactive') {
 				hold = true;
-			} else if (conn && (conn.ip === "0.0.0.0")) {
+			} else if (conn && conn.ip === '0.0.0.0') {
 				hold = true;
 			} else {
-			    // If at least one of the streams is active don't emit 'hold'.
+				// If at least one of the streams is active don't emit 'hold'.
 				hold = false;
 				break;
 			}
 		}
 
-		logger.debug('_isRemoteHoldSdp(): ' + hold);
+		logger.debug(`_isRemoteHoldSdp(): ${hold}`);
+
 		return hold;
 	}
 
-	_processInDialogSdpOffer(request)
-	{
+	_processInDialogSdpOffer(request) {
 		logger.debug('_processInDialogSdpOffer()');
 
 		const sdp = request.parseSDP();
@@ -2316,9 +2358,15 @@ module.exports = class RTCSession extends EventEmitter {
 				}
 
 				return this._connection.setRemoteDescription(offer).catch(error => {
-					logger.warn('processInDialogSdpOffer: setRemoteDescription error:%o, offending %s: %s', error, offer.type, offer.sdp);
-					let extraHeaders = [];
-					let diagnostics = this._pcDiagString(error);
+					logger.warn(
+						'processInDialogSdpOffer: setRemoteDescription error:%o, offending %s: %s',
+						error,
+						offer.type,
+						offer.sdp
+					);
+					const extraHeaders = [];
+					const diagnostics = this._pcDiagString(error);
+
 					if (diagnostics) {
 						extraHeaders.push(`Warning: 399 webrtc.local "${diagnostics}"`);
 					}
@@ -2449,7 +2497,8 @@ module.exports = class RTCSession extends EventEmitter {
 				options.extraHeaders.push(`Replaces: ${replaces}`);
 			}
 
-			let target_uri = request.refer_to.uri.clone();
+			const target_uri = request.refer_to.uri.clone();
+
 			target_uri.clearHeaders();
 			session.connect(target_uri, options, initCallback);
 		}
@@ -2517,7 +2566,8 @@ module.exports = class RTCSession extends EventEmitter {
 				this._status !== C.STATUS_WAITING_FOR_ACK &&
 				this._status !== C.STATUS_CONFIRMED
 			) {
-				logger.warn("receiveReplaces.accept() in state %d", this._status);
+				logger.warn('receiveReplaces.accept() in state %d', this._status);
+
 				return false;
 			}
 
@@ -2612,17 +2662,18 @@ module.exports = class RTCSession extends EventEmitter {
 				this._localMediaStream = stream;
 
 				if (stream) {
-					let trackids = [ ];
-					stream.getAudioTracks().forEach((track) => {
+					const trackids = [];
+
+					stream.getAudioTracks().forEach(track => {
 						trackids.push(track.id);
 						this._connection.addTrack(track, stream);
 					});
-					stream.getVideoTracks().forEach((track) => {
+					stream.getVideoTracks().forEach(track => {
 						trackids.push(track.id);
 						this._connection.addTrack(track, stream);
 					});
 					if (stream.getTracks().length > trackids.length) {
-						stream.getTracks().forEach((track) => {
+						stream.getTracks().forEach(track => {
 							if (trackids.indexOf(track.id) < 0) {
 								trackids.push(track.id);
 								this._connection.addTrack(track, stream);
@@ -2789,7 +2840,8 @@ module.exports = class RTCSession extends EventEmitter {
 						// We created a SDP 'answer' for the previous one,
 						// so check the current signaling state.
 						if (this._connection.signalingState === 'stable') {
-							logger.debug("creating new offer in stable state");
+							logger.debug('creating new offer in stable state');
+
 							return this._connection
 								.createOffer(this._rtcOfferConstraints)
 								.then(offer => {
@@ -2797,21 +2849,31 @@ module.exports = class RTCSession extends EventEmitter {
 										originator: 'local',
 										type: 'offer',
 										sdp: offer.sdp,
-										desc: offer
+										desc: offer,
 									};
+
 									logger.debug('emit "peerconnection:offercreated"');
 									this.emit('peerconnection:offercreated', e_offer);
+
 									return this._connection.setLocalDescription(offer);
 								})
 								.catch(error => {
-									logger.warn('receiveInviteResponse: createOffer error:%o', error);
+									logger.warn(
+										'receiveInviteResponse: createOffer error:%o',
+										error
+									);
 								});
 						}
 					})
 					.then(() => this._connection.setRemoteDescription(answer))
 					.then(() => this._progress('remote', response))
 					.catch(error => {
-						logger.warn('receiveInviteResponse: setRemoteDescription error:%o, offending %s: %s', error, answer.type, answer.sdp);
+						logger.warn(
+							'receiveInviteResponse: setRemoteDescription error:%o, offending %s: %s',
+							error,
+							answer.type,
+							answer.sdp
+						);
 						logger.warn(
 							'emit "peerconnection:setremotedescriptionfailed" [error:%o]',
 							error
@@ -2841,9 +2903,9 @@ module.exports = class RTCSession extends EventEmitter {
 				}
 
 				const remotehold = this._isRemoteHoldSdp(response.parseSDP());
-				if (remotehold)
-				{
-					logger.warn('receiveInviteResponse(2xx): remoteHold = ' + remotehold);
+
+				if (remotehold) {
+					logger.warn(`receiveInviteResponse(2xx): remoteHold = ${remotehold}`);
 					this._remoteHold = true;
 				}
 
@@ -2862,7 +2924,8 @@ module.exports = class RTCSession extends EventEmitter {
 						// Be ready for 200 with SDP after a 180/183 with SDP.
 						// We created a SDP 'answer' for it, so check the current signaling state.
 						if (this._connection.signalingState === 'stable') {
-							logger.debug("creating new offer in stable state");
+							logger.debug('creating new offer in stable state');
+
 							return this._connection
 								.createOffer(this._rtcOfferConstraints)
 								.then(offer => {
@@ -2870,14 +2933,21 @@ module.exports = class RTCSession extends EventEmitter {
 										originator: 'local',
 										type: 'offer',
 										sdp: offer.sdp,
-										desc: offer
+										desc: offer,
 									};
+
 									logger.debug('emit "peerconnection:offercreated"');
 									this.emit('peerconnection:offercreated', e_offer);
+
 									return this._connection.setLocalDescription(offer);
 								})
 								.catch(error => {
-									this._acceptAndTerminate(response, 500, 'Not Acceptable Here', error);
+									this._acceptAndTerminate(
+										response,
+										500,
+										'Not Acceptable Here',
+										error
+									);
 									this._failed('local', response, JsSIP_C.causes.WEBRTC_ERROR);
 								});
 						}
@@ -2894,8 +2964,18 @@ module.exports = class RTCSession extends EventEmitter {
 								this._confirmed('local', null);
 							})
 							.catch(error => {
-								logger.warn('receiveInviteResponse: setRemoteDescription error:%o, offending %s: %s', error, answer.type, answer.sdp);
-								this._acceptAndTerminate(response, 488, 'Not Acceptable Here', error);
+								logger.warn(
+									'receiveInviteResponse: setRemoteDescription error:%o, offending %s: %s',
+									error,
+									answer.type,
+									answer.sdp
+								);
+								this._acceptAndTerminate(
+									response,
+									488,
+									'Not Acceptable Here',
+									error
+								);
 								this._failed(
 									'remote',
 									response,
@@ -3003,7 +3083,9 @@ module.exports = class RTCSession extends EventEmitter {
 				return;
 			} else if (
 				!response.hasHeader('Content-Type') ||
-				this.isWrongContentType(response.getHeader('Content-Type').toLowerCase())
+				this.isWrongContentType(
+					response.getHeader('Content-Type').toLowerCase()
+				)
 			) {
 				onFailed.call(this);
 
@@ -3025,7 +3107,12 @@ module.exports = class RTCSession extends EventEmitter {
 					}
 				})
 				.catch(error => {
-					logger.warn('sendReinvite: setRemoteDescription error:%o, offending %s: %s', error, answer.type, answer.sdp);
+					logger.warn(
+						'sendReinvite: setRemoteDescription error:%o, offending %s: %s',
+						error,
+						answer.type,
+						answer.sdp
+					);
 
 					onFailed.call(this);
 
@@ -3154,7 +3241,9 @@ module.exports = class RTCSession extends EventEmitter {
 					return;
 				} else if (
 					!response.hasHeader('Content-Type') ||
-					this.isWrongContentType(response.getHeader('Content-Type').toLowerCase())
+					this.isWrongContentType(
+						response.getHeader('Content-Type').toLowerCase()
+					)
 				) {
 					onFailed.call(this);
 
@@ -3179,7 +3268,12 @@ module.exports = class RTCSession extends EventEmitter {
 						}
 					})
 					.catch(error => {
-						logger.warn('sendUpdate: setRemoteDescription error:%o, offending %s: %s', error, answer.type, answer.sdp);
+						logger.warn(
+							'sendUpdate: setRemoteDescription error:%o, offending %s: %s',
+							error,
+							answer.type,
+							answer.sdp
+						);
 
 						onFailed.call(this);
 
@@ -3211,7 +3305,8 @@ module.exports = class RTCSession extends EventEmitter {
 
 		if (status_code) {
 			reason_phrase = reason_phrase || JsSIP_C.REASON_PHRASE[status_code] || '';
-			let diagnostics = "";
+			let diagnostics = '';
+
 			if (local_error) {
 				diagnostics = this._pcDiagString(local_error);
 			}
@@ -3586,17 +3681,19 @@ module.exports = class RTCSession extends EventEmitter {
 		});
 	}
 
-	_pcDiagString(error)
-	{
+	_pcDiagString(error) {
 		let diagnostics = error.toString();
-		if (diagnostics && (typeof diagnostics === 'string')) {
+
+		if (diagnostics && typeof diagnostics === 'string') {
 			diagnostics = diagnostics.replace(/"/g, "'");
 			const re1 = /Failed to set .* sdp:...........*$/;
-			let matches = re1.exec(diagnostics);
-			if (matches && (matches.length > 0) && matches[0]) {
+			const matches = re1.exec(diagnostics);
+
+			if (matches && matches.length > 0 && matches[0]) {
 				diagnostics = matches[0];
 			}
 		}
+
 		return diagnostics;
 	}
 };

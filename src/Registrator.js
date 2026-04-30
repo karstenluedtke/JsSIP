@@ -137,6 +137,7 @@ module.exports = class Registrator {
 				let data = null;
 				const transport = this._transport || this._ua?.transport;
 				const socketerr = transport?.socket_error;
+
 				if (socketerr) {
 					data = { socketerror: socketerr };
 				}
@@ -350,6 +351,7 @@ module.exports = class Registrator {
 				let data = null;
 				const transport = this._transport || this._ua?.transport;
 				const sockerr = transport?.socket_error;
+
 				if (socketerr) {
 					data = { socketerror: socketerr };
 				}
@@ -402,9 +404,13 @@ module.exports = class Registrator {
 
 	_registrationFailure(response, cause, data) {
 		this._registering = false;
-		logger.debug("registrationFailure: " + String(cause) +
-		             ", data: " + (data? JSON.stringify(data): "none"));
-		const lowerlayerdata = data || { };
+		logger.debug(
+			`registrationFailure: ${String(cause)}, data: ${
+				data ? JSON.stringify(data) : 'none'
+			}`
+		);
+		const lowerlayerdata = data || {};
+
 		this._ua.registrationFailed({
 			...lowerlayerdata,
 			response: response || null,
@@ -424,7 +430,8 @@ module.exports = class Registrator {
 	_unregistered(response, cause, data) {
 		this._registering = false;
 		this._registered = false;
-		const lowerlayerdata = data || { };
+		const lowerlayerdata = data || {};
+
 		this._ua.unregistered({
 			...lowerlayerdata,
 			response: response || null,

@@ -11,438 +11,428 @@ const MIN_SUBSCRIBE_EXPIRES = 10; // In seconds.
 
 // This implements the client side of a SIP subscription (RFC3265, RFC6665).
 
-module.exports = class Subscription extends EventEmitter
-{
-	constructor(ua, target, event, transport)
-	{
- 		super();
+module.exports = class Subscription extends EventEmitter {
+	constructor(ua, target, event, transport) {
+		super();
 
- 		this._ua = ua;
- 		this._transport = transport;
+		this._ua = ua;
+		this._transport = transport;
 
- 		this._event = event;
- 		this._subsuri = ua.normalizeTarget(target);
- 		this._expires = ua.configuration.register_expires;
- 		this._refresh = false;
+		this._event = event;
+		this._subsuri = ua.normalizeTarget(target);
+		this._expires = ua.configuration.register_expires;
+		this._refresh = false;
 
- 		// Call-ID and CSeq values RFC3261 10.2.
- 		this._call_id = Utils.createRandomToken(22);
- 		this._from_tag = Utils.newTag();
- 		this._id = this._call_id + this._from_tag;
- 		this._cseq = 0;
+		// Call-ID and CSeq values RFC3261 10.2.
+		this._call_id = Utils.createRandomToken(22);
+		this._from_tag = Utils.newTag();
+		this._id = this._call_id + this._from_tag;
+		this._cseq = 0;
 
- 		this._to_uri = this._subsuri;
+		this._to_uri = this._subsuri;
 
- 		this._subscriptionRefresh = 0;
- 		this._subscriptionTimer = null;
+		this._subscriptionRefresh = 0;
+		this._subscriptionTimer = null;
 
- 		// Ongoing Register request.
- 		this._subscribing = false;
+		// Ongoing Register request.
+		this._subscribing = false;
 
- 		// Set status.
- 		this._state = 'TRYING';
- 		this._active = false;
- 		this._accepted = false;
+		// Set status.
+		this._state = 'TRYING';
+		this._active = false;
+		this._accepted = false;
 
- 		// Contact header.
- 		this._contact = this._ua.contact.toString();
+		// Contact header.
+		this._contact = this._ua.contact.toString();
 
- 		// Custom headers for SUBSCRIBE and un-SUBSCRIBE.
- 		this._extraHeaders = [];
+		// Custom headers for SUBSCRIBE and un-SUBSCRIBE.
+		this._extraHeaders = [];
 
- 		logger.debug('Subscription initialized');
+		logger.debug('Subscription initialized');
 	}
 
-	get id()
-	{
- 		return this._id;
+	get id() {
+		return this._id;
 	}
 
-	get state()
-	{
- 		return this._state;
+	get state() {
+		return this._state;
 	}
 
-	get active()
-	{
- 		return this._accepted && this._active;
+	get active() {
+		return this._accepted && this._active;
 	}
 
-	isEnded()
-	{
- 		return !this._subscribing && !this._accepted;
+	isEnded() {
+		return !this._subscribing && !this._accepted;
 	}
 
-	setExtraHeaders(extraHeaders)
-	{
- 		if (! Array.isArray(extraHeaders))
- 		{
- 			extraHeaders = [];
- 		}
+	setExtraHeaders(extraHeaders) {
+		if (!Array.isArray(extraHeaders)) {
+			extraHeaders = [];
+		}
 
- 		this._extraHeaders = extraHeaders.slice();
+		this._extraHeaders = extraHeaders.slice();
 	}
 
-	subscribe(options)
-	{
- 		logger.debug('subscribe...');
- 		if (options && options.expires && (options.expires >= 90)) {
- 				this._expires = options.expires;
- 		}
- 		if (options && options.refresh) {
- 				this._refresh = options.refresh;
- 		}
- 		if (options && options.extraHeaders) {
- 				this.setExtraHeaders(options.extraHeaders);
- 		}
+	subscribe(options) {
+		logger.debug('subscribe...');
+		if (options && options.expires && options.expires >= 90) {
+			this._expires = options.expires;
+		}
+		if (options && options.refresh) {
+			this._refresh = options.refresh;
+		}
+		if (options && options.extraHeaders) {
+			this.setExtraHeaders(options.extraHeaders);
+		}
 
- 		if (this._subscribing)
- 		{
- 			logger.debug('Register request in progress...');
+		if (this._subscribing) {
+			logger.debug('Register request in progress...');
 
- 			return;
- 		}
+			return;
+		}
 
- 		const extraHeaders = this._extraHeaders.slice();
+		const extraHeaders = this._extraHeaders.slice();
 
- 		extraHeaders.push(`Event: ${this._event}`);
- 		extraHeaders.push(`Contact: ${this._contact}`);
- 		extraHeaders.push(`Expires: ${this._expires}`);
+		extraHeaders.push(`Event: ${this._event}`);
+		extraHeaders.push(`Contact: ${this._contact}`);
+		extraHeaders.push(`Expires: ${this._expires}`);
 
- 		if (options && options.eventHandlers)
- 		{
- 			const handlers = options.eventHandlers;
- 			for (const event in handlers)
- 			{
- 				if (Object.prototype.hasOwnProperty.call(handlers, event))
- 				{
- 					this.on(event, handlers[event]);
- 				}
- 			}
- 		}
+		if (options && options.eventHandlers) {
+			const handlers = options.eventHandlers;
 
- 		logger.debug('creating SUBSCRIBE request...', this._subsuri, this._to_uri,
- 								this._from_tag, this._call_id, this._cseq + 1);
- 		const request = new SIPMessage.OutgoingRequest(
- 			JsSIP_C.SUBSCRIBE, this._subsuri, this._ua, {
- 				'to_uri'	: this._to_uri,
- 				'to_tag'	: this._to_tag,
- 				'from_tag': this._from_tag,
- 				'call_id' : this._call_id,
- 				'cseq'		: (this._cseq += 1)
- 			}, extraHeaders);
+			for (const event in handlers) {
+				if (Object.prototype.hasOwnProperty.call(handlers, event)) {
+					this.on(event, handlers[event]);
+				}
+			}
+		}
 
- 		logger.debug('creating request sender...');
- 		const request_sender = new RequestSender(this._ua, request, {
- 			onRequestTimeout : () =>
- 			{
- 				this._subscriptionFailure(null, JsSIP_C.causes.REQUEST_TIMEOUT);
- 			},
- 			onTransportError : () =>
- 			{
- 				this._subscriptionFailure(null, JsSIP_C.causes.CONNECTION_ERROR);
- 			},
- 			// Increase the CSeq on authentication.
- 			onAuthenticated : () =>
- 			{
- 				this._cseq += 1;
- 			},
- 			onReceiveResponse : (response) =>
- 			{
- 				// Discard responses to older SUBSCRIBE/un-SUBSCRIBE requests.
- 				if (response.cseq !== this._cseq)
- 				{
- 					return;
- 				}
+		logger.debug(
+			'creating SUBSCRIBE request...',
+			this._subsuri,
+			this._to_uri,
+			this._from_tag,
+			this._call_id,
+			this._cseq + 1
+		);
+		const request = new SIPMessage.OutgoingRequest(
+			JsSIP_C.SUBSCRIBE,
+			this._subsuri,
+			this._ua,
+			{
+				to_uri: this._to_uri,
+				to_tag: this._to_tag,
+				from_tag: this._from_tag,
+				call_id: this._call_id,
+				cseq: (this._cseq += 1),
+			},
+			extraHeaders
+		);
 
- 				// Clear subsciption timer.
- 				if (this._subscriptionTimer !== null)
- 				{
- 					clearTimeout(this._subscriptionTimer);
- 					this._subscriptionTimer = null;
- 				}
+		logger.debug('creating request sender...');
+		const request_sender = new RequestSender(this._ua, request, {
+			onRequestTimeout: () => {
+				this._subscriptionFailure(null, JsSIP_C.causes.REQUEST_TIMEOUT);
+			},
+			onTransportError: () => {
+				this._subscriptionFailure(null, JsSIP_C.causes.CONNECTION_ERROR);
+			},
+			// Increase the CSeq on authentication.
+			onAuthenticated: () => {
+				this._cseq += 1;
+			},
+			onReceiveResponse: response => {
+				// Discard responses to older SUBSCRIBE/un-SUBSCRIBE requests.
+				if (response.cseq !== this._cseq) {
+					return;
+				}
 
- 				switch (true)
- 				{
- 					case /^1[0-9]{2}$/.test(response.status_code):
- 					{
- 						// Ignore provisional responses.
- 						break;
- 					}
+				// Clear subsciption timer.
+				if (this._subscriptionTimer !== null) {
+					clearTimeout(this._subscriptionTimer);
+					this._subscriptionTimer = null;
+				}
 
- 					case /^2[0-9]{2}$/.test(response.status_code):
- 					{
- 						this._subscribing = false;
- 						this._to_tag = response.to_tag;
+				switch (true) {
+					case /^1[0-9]{2}$/.test(response.status_code): {
+						// Ignore provisional responses.
+						break;
+					}
 
- 						let expires = response.getHeader('expires');
+					case /^2[0-9]{2}$/.test(response.status_code): {
+						this._subscribing = false;
+						this._to_tag = response.to_tag;
 
- 						if (!expires)
- 						{
- 							expires = this._expires;
- 						}
+						let expires = response.getHeader('expires');
 
- 						this.scheduleRefreshTimer(Number(expires));
+						if (!expires) {
+							expires = this._expires;
+						}
 
- 						if (! this._accepted)
- 						{
- 							const data = { originator: 'remote', response: response };
- 							this._state = 'ACCEPTED';
- 							this._accepted = true;
- 							this._ua.newSubscription(this);
- 							this.emit('accepted', data);
- 						}
+						this.scheduleRefreshTimer(Number(expires));
 
- 						break;
- 					}
+						if (!this._accepted) {
+							const data = { originator: 'remote', response: response };
 
- 					default:
- 					{
- 						const cause = Utils.sipErrorCause(response.status_code);
+							this._state = 'ACCEPTED';
+							this._accepted = true;
+							this._ua.newSubscription(this);
+							this.emit('accepted', data);
+						}
 
- 						this._subscriptionFailure(response, cause);
- 					}
- 				}
- 			}
- 		});
+						break;
+					}
 
- 		logger.debug('sending request...');
- 		this._subscribing = true;
- 		request_sender.send();
- 		logger.debug('SUBSCRIBE request sent.');
+					default: {
+						const cause = Utils.sipErrorCause(response.status_code);
+
+						this._subscriptionFailure(response, cause);
+					}
+				}
+			},
+		});
+
+		logger.debug('sending request...');
+		this._subscribing = true;
+		request_sender.send();
+		logger.debug('SUBSCRIBE request sent.');
 	}
 
-	scheduleRefreshTimer(seconds)
-	{
- 		if (this._subscriptionTimer !== null)
- 		{
- 			clearTimeout(this._subscriptionTimer);
- 			this._subscriptionTimer = null;
- 		}
+	scheduleRefreshTimer(seconds) {
+		if (this._subscriptionTimer !== null) {
+			clearTimeout(this._subscriptionTimer);
+			this._subscriptionTimer = null;
+		}
 
- 		if (seconds < MIN_SUBSCRIBE_EXPIRES)
- 			seconds = MIN_SUBSCRIBE_EXPIRES;
+		if (seconds < MIN_SUBSCRIBE_EXPIRES) {
+			seconds = MIN_SUBSCRIBE_EXPIRES;
+		}
 
- 		const timeout = seconds > 64
- 			? (seconds * 1000 / 2) +
- 				Math.floor(((seconds / 2) - 32) * 1000 * Math.random())
- 			: (seconds * 1000) - 5000;
+		const timeout =
+			seconds > 64
+				? (seconds * 1000) / 2 +
+					Math.floor((seconds / 2 - 32) * 1000 * Math.random())
+				: seconds * 1000 - 5000;
 
- 		const refreshTime = Date.now() + timeout;
- 		const refreshDate = new Date(refreshTime);
+		const refreshTime = Date.now() + timeout;
+		const refreshDate = new Date(refreshTime);
 
- 		// Re-Subscribe or emit an event before the expiration interval has elapsed.
- 		// For that, decrease the expires value. ie: 3 seconds.
- 		logger.debug('resubscribing in ',timeout,'ms at ', refreshDate.toString());
- 		this._subscriptionRefresh = refreshTime;
- 		this._subscriptionTimer = setTimeout(() =>
- 		{
- 			this._subscriptionTimer = null;
- 			logger.debug('resubscription timer scheduled for ',
- 									refreshDate.toString(), ' fired at ', Date());
- 			// If there are no listeners for subscriptionExpiring, renew subscription.
- 			// If there are listeners, let the function listening do the subscribe call.
- 			if (this.listeners('subscriptionExpiring').length > 0)
- 			{
- 				this.emit('subscriptionExpiring', {originator: 'local'});
- 			}
- 			else if (this._refresh)
- 			{
- 				this.subscribe(null);
- 			}
- 		}, timeout);
+		// Re-Subscribe or emit an event before the expiration interval has elapsed.
+		// For that, decrease the expires value. ie: 3 seconds.
+		logger.debug(
+			'resubscribing in ',
+			timeout,
+			'ms at ',
+			refreshDate.toString()
+		);
+		this._subscriptionRefresh = refreshTime;
+		this._subscriptionTimer = setTimeout(() => {
+			this._subscriptionTimer = null;
+			logger.debug(
+				'resubscription timer scheduled for ',
+				refreshDate.toString(),
+				' fired at ',
+				Date()
+			);
+			// If there are no listeners for subscriptionExpiring, renew subscription.
+			// If there are listeners, let the function listening do the subscribe call.
+			if (this.listeners('subscriptionExpiring').length > 0) {
+				this.emit('subscriptionExpiring', { originator: 'local' });
+			} else if (this._refresh) {
+				this.subscribe(null);
+			}
+		}, timeout);
 	}
 
 	/**
- 	* In dialog Request Reception
- 	*/
-	receiveRequest(request)
-	{
- 		logger.debug('receiveRequest()');
+	 * In dialog Request Reception
+	 */
+	receiveRequest(request) {
+		logger.debug('receiveRequest()');
 
- 		if (request.method === JsSIP_C.NOTIFY)
- 		{
- 			logger.debug('receiveRequest(): NOTIFY');
- 			const ctype = request.getHeader('Content-Type');
- 			const data = { originator: 'remote',
- 										request: request,
- 										info: { contentType: ctype, body: request.body } };
- 			request.reply(200);
- 			if (this._accepted && !this._active)
- 			{
- 				this._active = true;
- 				this.emit('confirmed', data);
- 			}
- 			let subsState = request.getHeader('Subscription-State');
- 			if (subsState)
- 			{
- 				let semi = subsState.indexOf(';');
- 				if (semi > 0)
- 				{
- 					this._state = subsState.substr(0, semi).trim().toUpperCase();
+		if (request.method === JsSIP_C.NOTIFY) {
+			logger.debug('receiveRequest(): NOTIFY');
+			const ctype = request.getHeader('Content-Type');
+			const data = {
+				originator: 'remote',
+				request: request,
+				info: { contentType: ctype, body: request.body },
+			};
 
- 					let epos = subsState.indexOf('expires=', semi);
- 					if ((epos > semi) && (this._state === "ACTIVE"))
- 					{
- 						let expires = parseInt(subsState.substr(epos + 8));
- 						let refresh = Date.now() + 1000 * expires - 3000;
- 						logger.debug('calculated refresh at ', refresh,
- 												' subscriptionRefresh', this._subscriptionRefresh)
- 						if (refresh < this._subscriptionRefresh)
- 							this.scheduleRefreshTimer(expires);
- 					}
- 				} else {
- 					this._state = subsState.trim().toUpperCase();
- 				}
- 			}
+			request.reply(200);
+			if (this._accepted && !this._active) {
+				this._active = true;
+				this.emit('confirmed', data);
+			}
+			const subsState = request.getHeader('Subscription-State');
 
- 			logger.debug('emitting notify event');
- 			this.emit('notify', data);
+			if (subsState) {
+				const semi = subsState.indexOf(';');
 
- 			if (this._state === "TERMINATED")
- 			{
- 				if (this._subscriptionTimer !== null)
- 				{
- 					clearTimeout(this._subscriptionTimer);
- 					this._subscriptionTimer = null;
- 				}
- 				this._unsubscribed(request, 'Terminated');
- 			}
+				if (semi > 0) {
+					this._state = subsState.substr(0, semi).trim().toUpperCase();
 
- 			if (this._subscriptionRefresh && this._subscriptionTimer)
- 			{
- 				let refreshDate = new Date(this._subscriptionRefresh);
- 				logger.debug('subscriptionRefresh at ', refreshDate.toString());
- 			}
- 		} else {
- 			request.reply(405, 'Method Not Allowed');
- 		}
+					const epos = subsState.indexOf('expires=', semi);
+
+					if (epos > semi && this._state === 'ACTIVE') {
+						const expires = parseInt(subsState.substr(epos + 8));
+						const refresh = Date.now() + 1000 * expires - 3000;
+
+						logger.debug(
+							'calculated refresh at ',
+							refresh,
+							' subscriptionRefresh',
+							this._subscriptionRefresh
+						);
+						if (refresh < this._subscriptionRefresh) {
+							this.scheduleRefreshTimer(expires);
+						}
+					}
+				} else {
+					this._state = subsState.trim().toUpperCase();
+				}
+			}
+
+			logger.debug('emitting notify event');
+			this.emit('notify', data);
+
+			if (this._state === 'TERMINATED') {
+				if (this._subscriptionTimer !== null) {
+					clearTimeout(this._subscriptionTimer);
+					this._subscriptionTimer = null;
+				}
+				this._unsubscribed(request, 'Terminated');
+			}
+
+			if (this._subscriptionRefresh && this._subscriptionTimer) {
+				const refreshDate = new Date(this._subscriptionRefresh);
+
+				logger.debug('subscriptionRefresh at ', refreshDate.toString());
+			}
+		} else {
+			request.reply(405, 'Method Not Allowed');
+		}
 	}
 
-	unsubscribe(options = {})
-	{
- 		if (this.isEnded())
- 		{
- 			logger.debug('already unsubscribed');
+	unsubscribe(options = {}) {
+		if (this.isEnded()) {
+			logger.debug('already unsubscribed');
 
- 			return;
- 		}
+			return;
+		}
 
- 		this._state = 'TERMINATED';
- 		this._active = false;
- 		this._accepted = false;
+		this._state = 'TERMINATED';
+		this._active = false;
+		this._accepted = false;
 
- 		// Clear the subscription timer.
- 		if (this._subscriptionTimer !== null)
- 		{
- 			clearTimeout(this._subscriptionTimer);
- 			this._subscriptionTimer = null;
- 		}
+		// Clear the subscription timer.
+		if (this._subscriptionTimer !== null) {
+			clearTimeout(this._subscriptionTimer);
+			this._subscriptionTimer = null;
+		}
 
- 		const extraHeaders = this._extraHeaders.slice();
+		const extraHeaders = this._extraHeaders.slice();
 
- 		extraHeaders.push(`Event: ${this._event}`);
- 		extraHeaders.push(`Contact: ${this._contact}`);
- 		extraHeaders.push('Expires: 0');
+		extraHeaders.push(`Event: ${this._event}`);
+		extraHeaders.push(`Contact: ${this._contact}`);
+		extraHeaders.push('Expires: 0');
 
- 		const request = new SIPMessage.OutgoingRequest(
- 			JsSIP_C.SUBSCRIBE, this._subsuri, this._ua, {
- 				'to_uri'	: this._to_uri,
- 				'to_tag'	: this._to_tag,
- 				'from_tag': this._from_tag,
- 				'call_id' : this._call_id,
- 				'cseq'		: (this._cseq += 1)
- 			}, extraHeaders);
+		const request = new SIPMessage.OutgoingRequest(
+			JsSIP_C.SUBSCRIBE,
+			this._subsuri,
+			this._ua,
+			{
+				to_uri: this._to_uri,
+				to_tag: this._to_tag,
+				from_tag: this._from_tag,
+				call_id: this._call_id,
+				cseq: (this._cseq += 1),
+			},
+			extraHeaders
+		);
 
- 		const request_sender = new RequestSender(this._ua, request, {
- 			onRequestTimeout : () =>
- 			{
- 				this._unsubscribed(null, JsSIP_C.causes.REQUEST_TIMEOUT);
- 			},
- 			onTransportError : () =>
- 			{
- 				this._unsubscribed(null, JsSIP_C.causes.CONNECTION_ERROR);
- 			},
- 			// Increase the CSeq on authentication.
- 			onAuthenticated : () =>
- 			{
- 				this._cseq += 1;
- 			},
- 			onReceiveResponse : (response) =>
- 			{
- 				switch (true)
- 				{
- 					case /^1[0-9]{2}$/.test(response.status_code):
- 						// Ignore provisional responses.
- 						break;
- 					case /^2[0-9]{2}$/.test(response.status_code):
- 						this._unsubscribed(response);
- 						break;
- 					default:
- 					{
- 						const cause = Utils.sipErrorCause(response.status_code);
+		const request_sender = new RequestSender(this._ua, request, {
+			onRequestTimeout: () => {
+				this._unsubscribed(null, JsSIP_C.causes.REQUEST_TIMEOUT);
+			},
+			onTransportError: () => {
+				this._unsubscribed(null, JsSIP_C.causes.CONNECTION_ERROR);
+			},
+			// Increase the CSeq on authentication.
+			onAuthenticated: () => {
+				this._cseq += 1;
+			},
+			onReceiveResponse: response => {
+				switch (true) {
+					case /^1[0-9]{2}$/.test(response.status_code):
+						// Ignore provisional responses.
+						break;
+					case /^2[0-9]{2}$/.test(response.status_code):
+						this._unsubscribed(response);
+						break;
+					default: {
+						const cause = Utils.sipErrorCause(response.status_code);
 
- 						this._unsubscribed(response, cause);
- 					}
- 				}
- 			}
- 		});
+						this._unsubscribed(response, cause);
+					}
+				}
+			},
+		});
 
- 		request_sender.send();
+		request_sender.send();
 	}
 
-	terminate(options = {})
-	{
- 		logger.debug('terminate()');
- 		unsubscribe(options);
+	terminate(options = {}) {
+		logger.debug('terminate()');
+		unsubscribe(options);
 	}
 
-	close()
-	{
- 		if (this._active)
- 		{
- 			this.unsubscribed();
- 		}
+	close() {
+		if (this._active) {
+			this.unsubscribed();
+		}
 	}
 
+	onTransportClosed() {
+		this._subscribing = false;
+		if (this._subscriptionTimer !== null) {
+			clearTimeout(this._subscriptionTimer);
+			this._subscriptionTimer = null;
+		}
 
-	onTransportClosed()
-	{
- 		this._subscribing = false;
- 		if (this._subscriptionTimer !== null)
- 		{
- 			clearTimeout(this._subscriptionTimer);
- 			this._subscriptionTimer = null;
- 		}
-
- 		if (this._active)
- 		{
- 			this._active = false;
- 			this._unsubscribed(null, JsSIP_C.causes.CONNECTION_ERROR);
- 		}
+		if (this._active) {
+			this._active = false;
+			this._unsubscribed(null, JsSIP_C.causes.CONNECTION_ERROR);
+		}
 	}
 
-	_subscriptionFailure(response, cause)
-	{
- 		this._subscribing = false;
+	_subscriptionFailure(response, cause) {
+		this._subscribing = false;
 
- 		if (this._active)
- 		{
- 			this._active = false;
- 			this._unsubscribed(response, cause);
- 		}
+		if (this._active) {
+			this._active = false;
+			this._unsubscribed(response, cause);
+		}
 	}
 
-	_unsubscribed(response, cause)
-	{
- 		const data = { originator: ((response && cause) ? 'remote': 'local'),
- 									message: response, cause: cause };
- 		logger.debug('unsubscribed ' + (data.message || 'no response')
- 													+ ' ' + (data.cause || 'unknown cause'));
- 		this._state = 'TERMINATED';
- 		this._subscribing = false;
- 		this._active = false;
- 		this.emit('ended', data);
- 		this._ua.destroySubscription(this);
+	_unsubscribed(response, cause) {
+		const data = {
+			originator: response && cause ? 'remote' : 'local',
+			message: response,
+			cause: cause,
+		};
+
+		logger.debug(
+			`unsubscribed ${
+				data.message || 'no response'
+			} ${data.cause || 'unknown cause'}`
+		);
+		this._state = 'TERMINATED';
+		this._subscribing = false;
+		this._active = false;
+		this.emit('ended', data);
+		this._ua.destroySubscription(this);
 	}
 };
