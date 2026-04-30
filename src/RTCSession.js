@@ -2784,6 +2784,30 @@ module.exports = class RTCSession extends EventEmitter {
 				});
 
 				this._connectionPromiseQueue = this._connectionPromiseQueue
+					.then(() => {
+						// Be ready for a another 180/183 with SDP.
+						// We created a SDP 'answer' for the previous one,
+						// so check the current signaling state.
+						if (this._connection.signalingState === 'stable') {
+							logger.debug("creating new offer in stable state");
+							return this._connection
+								.createOffer(this._rtcOfferConstraints)
+								.then(offer => {
+									const e_offer = {
+										originator: 'local',
+										type: 'offer',
+										sdp: offer.sdp,
+										desc: offer
+									};
+									logger.debug('emit "peerconnection:offercreated"');
+									this.emit('peerconnection:offercreated', e_offer);
+									return this._connection.setLocalDescription(offer);
+								})
+								.catch(error => {
+									logger.warn('receiveInviteResponse: createOffer error:%o', error);
+								});
+						}
+					})
 					.then(() => this._connection.setRemoteDescription(answer))
 					.then(() => this._progress('remote', response))
 					.catch(error => {
