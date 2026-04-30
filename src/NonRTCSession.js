@@ -1,5 +1,5 @@
-/* globals RTCPeerConnection: false, RTCSessionDescription: false */
-/* eslint-disable no-invalid-this */
+/* globals RTCSessionDescription: false, MediaStream: false */
+/* eslint-disable no-invalid-this, no-unused-vars */
 
 const EventEmitter = require('events').EventEmitter;
 const sdp_transform = require('sdp-transform');
