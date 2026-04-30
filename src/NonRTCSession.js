@@ -1,3 +1,6 @@
+/* globals RTCPeerConnection: false, RTCSessionDescription: false */
+/* eslint-disable no-invalid-this */
+
 const EventEmitter = require('events').EventEmitter;
 const sdp_transform = require('sdp-transform');
 const Logger = require('./Logger');

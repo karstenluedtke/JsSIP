@@ -317,6 +317,7 @@ module.exports = class Subscription extends EventEmitter {
 	}
 
 	unsubscribe(options = {}) {
+		logger.debug(`unsubscribe ${JSON.stringify(options)}`);
 		if (this.isEnded()) {
 			logger.debug('already unsubscribed');
 
@@ -366,12 +367,14 @@ module.exports = class Subscription extends EventEmitter {
 			},
 			onReceiveResponse: response => {
 				switch (true) {
-					case /^1[0-9]{2}$/.test(response.status_code):
+					case /^1[0-9]{2}$/.test(response.status_code): {
 						// Ignore provisional responses.
 						break;
-					case /^2[0-9]{2}$/.test(response.status_code):
+					}
+					case /^2[0-9]{2}$/.test(response.status_code): {
 						this._unsubscribed(response);
 						break;
+					}
 					default: {
 						const cause = Utils.sipErrorCause(response.status_code);
 
@@ -386,7 +389,7 @@ module.exports = class Subscription extends EventEmitter {
 
 	terminate(options = {}) {
 		logger.debug('terminate()');
-		unsubscribe(options);
+		this.unsubscribe(options);
 	}
 
 	close() {
