@@ -350,7 +350,7 @@ module.exports = class Registrator {
 			onTransportError: () => {
 				let data = null;
 				const transport = this._transport || this._ua?.transport;
-				const sockerr = transport?.socket_error;
+				const socketerr = transport?.socket_error;
 
 				if (socketerr) {
 					data = { socketerror: socketerr };
