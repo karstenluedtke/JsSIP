@@ -708,14 +708,16 @@ module.exports = class RTCSession extends EventEmitter {
 							offer.sdp
 						);
 
-						const extraHeaders = [];
+						const responseExtraHeaders = [];
 						const diagnostics = this._pcDiagString(error);
 
 						if (diagnostics) {
-							extraHeaders.push(`Warning: 399 webrtc.local "${diagnostics}"`);
+							responseExtraHeaders.push(
+								`Warning: 399 webrtc.local "${diagnostics}"`
+							);
 						}
 
-						request.reply(488, null, extraHeaders);
+						request.reply(488, null, responseExtraHeaders);
 
 						this._failed('system', null, JsSIP_C.causes.WEBRTC_ERROR);
 
