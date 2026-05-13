@@ -115,6 +115,7 @@ module.exports = class RTCSession extends EventEmitter {
 		this._videoMuted = false;
 		this._localHold = false;
 		this._remoteHold = false;
+		this._referWithoutHold = false; // REFER received w/o explicit hold
 
 		// Session Timers (RFC 4028).
 		this._sessionTimers = {
@@ -2148,8 +2149,9 @@ module.exports = class RTCSession extends EventEmitter {
 		// Request without SDP.
 		if (!request.body) {
 			this._late_sdp = true;
-			if (this._remoteHold) {
+			if (this._remoteHold || this._referWithoutHold) {
 				this._remoteHold = false;
+				this._referWithoutHold = false;
 				this._onunhold('remote');
 			}
 			this._connectionPromiseQueue = this._connectionPromiseQueue
@@ -2389,8 +2391,9 @@ module.exports = class RTCSession extends EventEmitter {
 					throw new Error('terminated');
 				}
 
-				if (this._remoteHold === true && hold === false) {
+				if ((this._remoteHold || this._referWithoutHold) && hold === false) {
 					this._remoteHold = false;
+					this._referWithoutHold = false;
 					this._onunhold('remote');
 				} else if (this._remoteHold === false && hold === true) {
 					this._remoteHold = true;
@@ -2470,6 +2473,8 @@ module.exports = class RTCSession extends EventEmitter {
 			) {
 				return false;
 			}
+
+			this._referWithoutHold = !this._remoteHold;
 
 			const session = new RTCSession(this._ua);
 
