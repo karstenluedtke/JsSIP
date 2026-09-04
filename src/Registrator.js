@@ -159,6 +159,8 @@ module.exports = class Registrator {
 					this._registrationTimer = null;
 				}
 
+				const registrationPending = this._registering;
+
 				switch (true) {
 					case /^1[0-9]{2}$/.test(response.status_code): {
 						// Ignore provisional responses.
@@ -172,6 +174,12 @@ module.exports = class Registrator {
 							logger.debug(
 								'no Contact header in response to REGISTER, response ignored'
 							);
+							if (registrationPending) {
+								this._registrationFailure(
+									response,
+									JsSIP_C.causes.MISSING_CONTACT
+								);
+							}
 
 							break;
 						}
@@ -200,6 +208,12 @@ module.exports = class Registrator {
 							logger.debug(
 								'no Contact header pointing to us, response ignored'
 							);
+							if (registrationPending) {
+								this._registrationFailure(
+									response,
+									JsSIP_C.causes.MISSING_CONTACT
+								);
+							}
 
 							break;
 						}

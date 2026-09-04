@@ -37,6 +37,7 @@ module.exports = {
 		USER_DENIED_MEDIA_ACCESS: 'User Denied Media Access',
 		BAD_MEDIA_DESCRIPTION: 'Bad Media Description',
 		RTP_TIMEOUT: 'RTP Timeout',
+		MISSING_CONTACT: 'Missing Contact',
 	},
 
 	SIP_ERROR_CAUSES: {
